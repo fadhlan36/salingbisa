@@ -29,7 +29,7 @@ export default function Navbar() {
 
         {/* Right */}
         <div className="ml-8 flex items-center gap-5">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" className="cursor-pointer">
             <Bell className="h-5 w-5" />
           </Button>
 

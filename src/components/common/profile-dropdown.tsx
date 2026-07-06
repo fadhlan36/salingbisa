@@ -15,7 +15,7 @@ export function ProfileDropDown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="rounded-full">
+        <button className="rounded-full cursor-pointer transition-opacity hover:opacity-80">
           <Image
             src="/king.png"
             alt="Profile"
