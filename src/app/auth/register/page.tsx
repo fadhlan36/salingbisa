@@ -22,7 +22,7 @@ export default function Register() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch(`/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -33,8 +33,11 @@ export default function Register() {
           password: password,
         }),
       });
+      const data = await response.json();
+      console.log(data);
       if (!response.ok) {
         setError("Gagal mendaftar. Silakan coba lagi.");
+        return;
       } else {
         redirect("/auth/login");
       }
