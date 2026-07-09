@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorAlert } from "@/components/common/error-alert";
+import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Eye, Mail, UserRound } from "lucide-react";
@@ -129,12 +130,15 @@ export default function Register() {
           {error && <ErrorAlert message={error} />}
 
           {/* Tombol Log In Utama */}
-          <button
+          <Button
+            variant="default"
+            size="lg"
+            disabled={loading}
             type="submit"
             className="w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all active:scale-[0.98] mt-2"
           >
-            Register
-          </button>
+            {loading ? "Registering..." : "Register"}
+          </Button>
         </form>
 
         {/* Footer Registrasi */}
