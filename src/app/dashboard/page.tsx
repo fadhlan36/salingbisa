@@ -63,11 +63,13 @@ const skills = [
 
 export default function Dashboard() {
   return (
-    <section className="flex flex-col gap-5">
+    <section className="flex flex-col gap-8 md:gap-10">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h2 className="text-2xl font-bold">Hi, Fadhlan 👋</h2>
-        <p className="text-sm">Find learning partners and grow together.</p>
+        <p className="text-sm text-muted-foreground">
+          Find learning partners and grow together.
+        </p>
       </div>
 
       {/* Rekomendation Match */}
@@ -75,9 +77,9 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           {/* Left side */}
-          <div>
+          <div className="flex flex-col gap-1">
             <h3 className="text-xl font-semibold">Top Picks For You</h3>
-            <p className="text-sm">
+            <p className="text-sm text-muted-foreground">
               People who want to learn what you teach, and can teach what you
               want to learn.
             </p>
@@ -91,7 +93,7 @@ export default function Dashboard() {
         </div>
 
         {/* Partner Cards */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {partners.map((partner) => (
             <PartnerCard key={partner.name} partner={partner} />
           ))}
@@ -101,9 +103,7 @@ export default function Dashboard() {
       {/* Browse Available Skills */}
       <div className="flex flex-col gap-4">
         {/* Header */}
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xl font-semibold">Browse by Skills</h3>
-        </div>
+        <h3 className="text-xl font-semibold">Browse by Skills</h3>
         {/* Skills */}
         <HorizontalScroll>
           {skills.map((skill) => (
