@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 const menus = [
   {
     name: "Home",
-    href: "/",
+    href: "/dashboard",
     icon: Home,
   },
   {
@@ -59,9 +59,9 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 z-50 h-screen w-64 flex flex-col border-r shadow-lg bg-white">
       {/* Logo */}
       <div className="flex h-20 items-center px-8">
-        <h1 className="text-2xl font-bold">
-          <span className="text-violet-600">Skill</span>
-          <span className="text-black">Swap</span>
+        <h1 className="text-xl font-bold">
+          <span className="text-indigo-600">Saling</span>
+          <span className="text-black">Bisa</span>
         </h1>
       </div>
 
@@ -79,7 +79,7 @@ export default function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all",
                 active
-                  ? "font-bold bg-violet-100 text-violet-700"
+                  ? "font-bold bg-indigo-100 text-indigo-700"
                   : "text-gray-600 hover:bg-gray-100",
               )}
             >
@@ -88,7 +88,7 @@ export default function Sidebar() {
               <span>{menu.name}</span>
 
               {menu.name === "Notifications" && (
-                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-xs text-white">
+                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-xs text-white">
                   3
                 </span>
               )}
@@ -98,7 +98,9 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t p-6 text-sm text-gray-400">© 2026 SkillSwap</div>
+      <div className="border-t p-6 text-sm text-gray-400">
+        © 2026 SalingBisa
+      </div>
     </aside>
   );
 }

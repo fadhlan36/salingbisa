@@ -1,21 +1,72 @@
+import HorizontalScroll from "@/components/common/horizontal-scroll";
 import PartnerCard from "@/components/dashboard/partner-card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import SkillCard from "@/components/dashboard/skill-card";
+
+const partners = [
+  {
+    name: "Andi Pratama",
+    avatar: "/avatar.png",
+    match: 96,
+    teach: "UI Design",
+    learn: "React",
+  },
+  {
+    name: "Budi Santoso",
+    avatar: "/avatar.png",
+    match: 85,
+    teach: "JavaScript",
+    learn: "Python",
+  },
+  {
+    name: "Citra Dewi",
+    avatar: "/avatar.png",
+    match: 92,
+    teach: "Marketing",
+    learn: "Sales",
+  },
+  {
+    name: "Dika Pratama",
+    avatar: "/avatar.png",
+    match: 78,
+    teach: "Photography",
+    learn: "Video Editing",
+  },
+];
+
+const skills = [
+  {
+    name: "UI Design",
+    amountPeople: 120,
+    icon: "🎨",
+  },
+  {
+    name: "JavaScript",
+    amountPeople: 250,
+    icon: "💻",
+  },
+  {
+    name: "Python",
+    amountPeople: 160,
+    icon: "🐍",
+  },
+  {
+    name: "Marketing",
+    amountPeople: 80,
+    icon: "📈",
+  },
+  {
+    name: "Sales",
+    amountPeople: 230,
+    icon: "💼",
+  },
+];
 
 export default function Dashboard() {
   return (
-    <section className="flex flex-col gap-8">
+    <section className="flex flex-col gap-5">
       {/* Header */}
-      <div className="flex flex-col gap-3">
-        <h1 className="text-3xl font-bold ">Hi, Fadhlan 👋</h1>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold">Hi, Fadhlan 👋</h2>
         <p className="text-sm">Find learning partners and grow together.</p>
       </div>
 
@@ -25,7 +76,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           {/* Left side */}
           <div>
-            <h1 className="text-xl font-semibold">Top Picks For You</h1>
+            <h3 className="text-xl font-semibold">Top Picks For You</h3>
             <p className="text-sm">
               People who want to learn what you teach, and can teach what you
               want to learn.
@@ -39,45 +90,26 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Content */}
+        {/* Partner Cards */}
         <div className="grid grid-cols-4 gap-6">
-          <PartnerCard
-            partner={{
-              name: "Andi Pratama",
-              avatar: "/avatar.png",
-              match: 96,
-              teach: "UI Design",
-              learn: "React",
-            }}
-          />
-          <PartnerCard
-            partner={{
-              name: "Budi Santoso",
-              avatar: "/avatar.png",
-              match: 85,
-              teach: "JavaScript",
-              learn: "Python",
-            }}
-          />
-          <PartnerCard
-            partner={{
-              name: "Citra Dewi",
-              avatar: "/avatar.png",
-              match: 92,
-              teach: "Marketing",
-              learn: "Sales",
-            }}
-          />
-          <PartnerCard
-            partner={{
-              name: "Dika Pratama",
-              avatar: "/avatar.png",
-              match: 78,
-              teach: "Photography",
-              learn: "Video Editing",
-            }}
-          />
+          {partners.map((partner) => (
+            <PartnerCard key={partner.name} partner={partner} />
+          ))}
         </div>
+      </div>
+
+      {/* Browse Available Skills */}
+      <div className="flex flex-col gap-4">
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xl font-semibold">Browse by Skills</h3>
+        </div>
+        {/* Skills */}
+        <HorizontalScroll>
+          {skills.map((skill) => (
+            <SkillCard key={skill.name} skill={skill} />
+          ))}
+        </HorizontalScroll>
       </div>
     </section>
   );
