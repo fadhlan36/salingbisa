@@ -1,28 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { NextRequest, NextResponse } from "next/server";
+import { verifyToken } from "@/lib/auth";
 
 export function middleware(request: NextRequest) {
-    const token = request.cookies.get('token')?.value
-    const user = token ? verifyToken(token) : null
+  console.log("Middleware Hit: ", request.nextUrl.pathname);
+  const token = request.cookies.get("token")?.value;
+  console.log("TOKEN: ", token);
 
-    const protectedPaths = ['/dashboard', '/profile', '/matches']
-    const isProtectedPath = protectedPaths.some((path) =>
-        request.nextUrl.pathname.startsWith(path)
-    )
-
-    if (isProtectedPath && !user) {
-        return NextResponse.redirect(new URL('/login', request.url))
+  let user = null;
+  if (token) {
+    try {
+      user = verifyToken(token);
+      console.log("VERIFY RESULT:", user);
+    } catch (err) {
+      console.log("VERIFY ERROR:", err);
+      user = null;
     }
+  }
 
-    if ((request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register') && user) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
+  const protectedPage = ["/dashboard", "/profile", "/matches"];
+  const isProtectedPage = protectedPage.some((path) =>
+    request.nextUrl.pathname.startsWith(path),
+  );
 
-    return NextResponse.next()
+  if (isProtectedPage && !user) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+
+  if (
+    (request.nextUrl.pathname === "/auth/login" ||
+      request.nextUrl.pathname === "/auth/register") &&
+    user
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  const response = NextResponse.next();
+  response.headers.set("Cache-Control", "no-store, must-revalidate");
+  return response;
 }
 
 export const config = {
-    matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-    ],
-}
+  matcher: [
+    "/dashboard/:path*",
+    "/profile/:path*",
+    "/matches/:path*",
+    "/auth/:path*",
+  ],
+  runtime: "nodejs",
+};

@@ -37,7 +37,7 @@ export default function Login() {
         return;
       }
 
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (error) {
       console.log(error);
       setError("Gagal terhubung ke server. Silakan coba lagi.");
