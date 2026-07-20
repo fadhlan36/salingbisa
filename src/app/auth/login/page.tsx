@@ -5,7 +5,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Eye, Mail } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ErrorAlert } from "@/components/common/error-alert";
 
@@ -14,6 +14,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,18 +27,19 @@ export default function Login() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
+      let data = await response.json();
+
       if (!response.ok) {
-        setError("Email atau password salah. Silakan coba lagi.");
-      } else {
-        redirect("/dashboard");
+        setError(data.error || "Email atau password salah. Silakan coba lagi.");
+        return;
       }
+
+      router.push("/dashboard");
     } catch (error) {
+      console.log(error);
       setError("Gagal terhubung ke server. Silakan coba lagi.");
     } finally {
       setLoading(false);

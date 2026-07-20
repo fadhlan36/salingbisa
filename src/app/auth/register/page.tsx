@@ -1,12 +1,13 @@
 "use client";
 
 import { ErrorAlert } from "@/components/common/error-alert";
+import { SuccessAlert } from "@/components/common/success-alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Eye, Mail, UserRound } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function Register() {
@@ -15,6 +16,8 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,12 +37,14 @@ export default function Register() {
         }),
       });
       const data = await response.json();
-      console.log(data);
       if (!response.ok) {
-        setError("Gagal mendaftar. Silakan coba lagi.");
+        setError(data.error || "Gagal mendaftar. Silakan coba lagi.");
         return;
       } else {
-        redirect("/auth/login");
+        setSuccess("Berhasil mendaftar. Silakan login.");
+        setTimeout(() => {
+          router.replace("/auth/login");
+        }, 1500);
       }
     } catch (error) {
       setError("Gagal terhubung ke server. Silakan coba lagi.");
@@ -131,6 +136,7 @@ export default function Register() {
           </Field>
 
           {error && <ErrorAlert message={error} />}
+          {success && <SuccessAlert message={success} />}
 
           {/* Tombol Log In Utama */}
           <Button
