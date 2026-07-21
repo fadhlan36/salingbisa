@@ -53,7 +53,7 @@ export default function HorizontalScroll({
   }, [children]);
 
   return (
-    <div className="relative">
+    <div className="relative overflow-visible">
       {showLeft && (
         <Button
           size="icon"
@@ -67,15 +67,7 @@ export default function HorizontalScroll({
 
       <div
         ref={scrollRef}
-        className="
-        flex
-        gap-4
-        overflow-x-auto
-        scroll-smooth
-        scrollbar-hide
-        px-2
-        py-2
-        "
+        className="flex gap-4 overflow-x-auto overflow-y-visible scroll-smooth scrollbar-hide py-2 px-1"
       >
         {children}
       </div>

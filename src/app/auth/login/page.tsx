@@ -1,0 +1,134 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Eye, Mail } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { ErrorAlert } from "@/components/common/error-alert";
+
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      let data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Email atau password salah. Silakan coba lagi.");
+        return;
+      }
+
+      router.replace("/dashboard");
+    } catch (error) {
+      console.log(error);
+      setError("Gagal terhubung ke server. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex w-full md:w-[55%] flex-col justify-center px-6 py-12 sm:px-12 md:px-16">
+      <div className="mx-auto w-full max-w-sm">
+        {/* Judul */}
+        <h1 className="text-3xl font-bold text-center text-slate-800 mb-8 tracking-wide">
+          Login
+        </h1>
+
+        {/* Form Utama */}
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          {/* Input Email */}
+          <Field>
+            <FieldLabel
+              htmlFor="email"
+              className="text-sm font-semibold text-slate-700"
+            >
+              Email
+            </FieldLabel>
+            <div className="relative mt-1.5">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                <Mail className="h-5 w-5 text-slate-400" />
+              </div>
+              <Input
+                id="email"
+                type="email"
+                placeholder="example@gmail.com"
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-indigo-200 text-slate-700 focus-visible:border-indigo-400 focus-visible:ring-1 focus-visible:ring-indigo-400 bg-white shadow-indigo-100 text-sm outline-none transition-all shadow-sm"
+                required
+                onChange={(e) => setEmail(e.target.value)}
+                value={email}
+              />
+            </div>
+          </Field>
+
+          {/* Input Password */}
+          <Field>
+            <FieldLabel
+              htmlFor="password"
+              className="text-sm font-semibold text-slate-700"
+            >
+              Password
+            </FieldLabel>
+            <div className="relative mt-1.5">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                <Eye className="h-5 w-5 text-slate-400" />
+              </div>
+              <Input
+                onChange={(e) => setPassword(e.target.value)}
+                value={password}
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-indigo-200 text-slate-700 focus-visible:border-indigo-400 focus-visible:ring-1 focus-visible:ring-indigo-400 bg-white shadow-indigo-100 text-sm outline-none transition-all shadow-sm"
+                required
+              />
+            </div>
+          </Field>
+
+          {error && <ErrorAlert message={error} />}
+
+          {/* Tombol Log In Utama */}
+          <Button
+            variant="default"
+            size="lg"
+            className="w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all active:scale-[0.98] mt-2"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Log In"}
+          </Button>
+        </form>
+
+        {/* Footer Registrasi */}
+        <p className="mt-8 text-center text-xs font-medium text-slate-500">
+          Don't have an account?{" "}
+          <Link
+            href="/auth/register"
+            className="font-bold text-slate-700 hover:underline"
+          >
+            Sign Up here
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}

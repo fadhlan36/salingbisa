@@ -14,7 +14,7 @@ type PartnerCardProps = {
 
 export default function PartnerCard({ partner }: PartnerCardProps) {
   return (
-    <Card className="relative w-64 rounded-2xl px-5 shadow-sm border max-h-[400px] flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+    <Card className="relative w-56 sm:w-64 shrink-0 rounded-xl px-6 shadow-sm border max-h-[400px] flex flex-col justify-between hover:-translate-y-1 hover:shadow-md transition-all duration-300">
       {/* Badge */}
       <div className="absolute top-4 left-4">
         <Badge className="rounded-full bg-green-100 text-green-700">

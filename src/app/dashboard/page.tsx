@@ -1,32 +1,35 @@
 import HorizontalScroll from "@/components/common/horizontal-scroll";
 import PartnerCard from "@/components/dashboard/partner-card";
 import SkillCard from "@/components/dashboard/skill-card";
+import { verifyToken } from "@/lib/auth";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const partners = [
   {
     name: "Andi Pratama",
-    avatar: "/avatar.png",
+    avatar: "/king.png",
     match: 96,
     teach: "UI Design",
     learn: "React",
   },
   {
     name: "Budi Santoso",
-    avatar: "/avatar.png",
+    avatar: "/king.png",
     match: 85,
     teach: "JavaScript",
     learn: "Python",
   },
   {
     name: "Citra Dewi",
-    avatar: "/avatar.png",
+    avatar: "/king.png",
     match: 92,
     teach: "Marketing",
     learn: "Sales",
   },
   {
     name: "Dika Pratama",
-    avatar: "/avatar.png",
+    avatar: "/king.png",
     match: 78,
     teach: "Photography",
     learn: "Video Editing",
@@ -61,12 +64,27 @@ const skills = [
   },
 ];
 
-export default function Dashboard() {
+export default async function Dashboard() {
+  const token = (await cookies()).get("token")?.value;
+
+  if (!token) {
+    redirect("/auth/login");
+  }
+
+  let payload;
+  try {
+    payload = verifyToken(token); // { userId, email, full_name }
+  } catch {
+    redirect("/auth/login");
+  }
+
   return (
-    <section className="flex flex-col gap-8 md:gap-10">
+    <section className="mx-auto max-w-7xl space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold">Hi, Fadhlan 👋</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold">
+          Hai, {payload?.full_name ? payload?.full_name : "there"} 👋
+        </h2>
         <p className="text-sm text-muted-foreground">
           Find learning partners and grow together.
         </p>
@@ -75,7 +93,7 @@ export default function Dashboard() {
       {/* Rekomendation Match */}
       <div className="flex flex-col gap-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           {/* Left side */}
           <div className="flex flex-col gap-1">
             <h3 className="text-xl font-semibold">Top Picks For You</h3>
@@ -93,10 +111,12 @@ export default function Dashboard() {
         </div>
 
         {/* Partner Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {partners.map((partner) => (
-            <PartnerCard key={partner.name} partner={partner} />
-          ))}
+        <div className="flex flex-col gap-4">
+          <HorizontalScroll>
+            {partners.map((partner) => (
+              <PartnerCard key={partner.name} partner={partner} />
+            ))}
+          </HorizontalScroll>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../globals.css";
 import Navbar from "@/components/layout/navbar";
 import Sidebar from "@/components/layout/sidebar";
+import { SidebarProvider } from "@/components/layout/sidebar-context";
 
 export const metadata: Metadata = {
   title: "Dashboard | Salingbisa",
@@ -10,18 +11,18 @@ export const metadata: Metadata = {
 
 export default function DashboardLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <body className="font-sans">
+    <SidebarProvider>
       <Sidebar />
 
-      <div className="ml-64">
+      <div className="lg:ml-64">
         <Navbar />
 
-        <main className="p-8 pl-10 mt-20">{children}</main>
+        <main className="pt-24 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl">{children}</div>
+        </main>
       </div>
-    </body>
+    </SidebarProvider>
   );
 }

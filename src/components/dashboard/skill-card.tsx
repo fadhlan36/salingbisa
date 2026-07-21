@@ -10,7 +10,7 @@ type SkillCardProps = {
 
 export default function SkillCard({ skill }: SkillCardProps) {
   return (
-    <Card className="flex flex-row gap-2 w-64 items-center rounded-xl border p-4 shrink-0 hover:-translate-y-1 hover:shadow-md transition-all duration-200">
+    <Card className="flex flex-row gap-2 w-56 sm:w-64 items-center rounded-xl border p-4 shrink-0 hover:-translate-y-1 hover:shadow-md transition-all duration-200">
       {/* Icon */}
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
         {skill.icon}
