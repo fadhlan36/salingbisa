@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Gagal membuat user" }, { status: 500 });
   }
 
-  const token = signToken({ userId: newUser.id, email: newUser.email });
+  const token = signToken({ userId: newUser.id, email: newUser.email, full_name: newUser.full_name });
 
   const response = NextResponse.json({ user: newUser });
   response.cookies.set("token", token, {
