@@ -22,7 +22,7 @@ const menus = [
   { name: "My Partners", href: "/partners", icon: Users },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Notifications", href: "/notifications", icon: Bell },
-  { name: "Profile", href: "/profile", icon: User },
+  { name: "Profile", href: "/dashboard/profile", icon: User }, // <-- Diubah di sini
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -63,7 +63,14 @@ export default function Sidebar() {
         <nav className="flex-1 space-y-2 px-4 overflow-y-auto">
           {menus.map((menu) => {
             const Icon = menu.icon;
-            const active = pathname === menu.href;
+
+            // Logic active yang lebih fleksibel:
+            // Jika menu '/dashboard', harus persis sama (exact match) agar tidak selalu aktif di '/dashboard/profile'
+            // Jika menu lain (seperti '/dashboard/profile'), cocokkan jika pathname sama persis
+            const active =
+              menu.href === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname === menu.href;
 
             return (
               <Link
