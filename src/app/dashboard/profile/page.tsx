@@ -2,17 +2,94 @@ import Link from "next/link";
 import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  ArrowLeft,
-  Pencil,
-  MapPin,
-  Star,
-  Users,
-  CheckCircle2,
-} from "lucide-react";
+import { ArrowLeft, MapPin, Star, Users, CheckCircle2 } from "lucide-react";
+import EditProfileModal from "@/components/profile/edit-profile-modal";
+
+// Type definition untuk response API Profile
+interface UserProfile {
+  name: string;
+  username: string;
+  location: string;
+  rating: number;
+  reviewsCount: number;
+  bioHeadline: string;
+  aboutMe: string;
+  avatar: string;
+  isOnline: boolean;
+  stats: {
+    learningPartners: number;
+    successfulSessions: number;
+    averageRating: number;
+  };
+  canHelpWith: { name: string; level: string; icon: string }[];
+  wantToLearn: { name: string; level: string; icon: string }[];
+}
+
+async function getUserProfile(
+  token: string,
+  payload: any,
+): Promise<UserProfile> {
+  try {
+    // Panggil API profile backend
+    const res = await fetch("http://localhost:3000/api/user/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `token=${token}`,
+      },
+      cache: "no-store", // Agar data selalu paling up-to-date saat direfresh
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        name: data.full_name || payload?.full_name || "User",
+        username:
+          data.username || payload?.email
+            ? `@${payload.email.split("@")[0]}`
+            : "@user",
+        location: data.location || "Lokasi belum diatur",
+        rating: data.rating ?? 0,
+        reviewsCount: data.reviews_count ?? 0,
+        bioHeadline: data.bio_headline || "Belum ada bio singkat.",
+        aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
+        avatar: data.avatar_url || "/king.png",
+        isOnline: data.is_online ?? true,
+        stats: {
+          learningPartners: data.stats?.learning_partners ?? 0,
+          successfulSessions: data.stats?.successful_sessions ?? 0,
+          averageRating: data.stats?.average_rating ?? 0,
+        },
+        canHelpWith: data.can_help_with || [],
+        wantToLearn: data.want_to_learn || [],
+      };
+    }
+  } catch (error) {
+    console.error("Gagal mengambil data profil:", error);
+  }
+
+  // Fallback data jika API belum siap / gagal di-fetch
+  return {
+    name: payload?.full_name || "User",
+    username: payload?.email ? `@${payload.email.split("@")[0]}` : "@user",
+    location: "Belum diatur",
+    rating: 0,
+    reviewsCount: 0,
+    bioHeadline: "Tambahkan deskripsi singkat profil kamu.",
+    aboutMe: "Tambahkan informasi lengkap tentang dirimu.",
+    avatar: "/king.png",
+    isOnline: true,
+    stats: {
+      learningPartners: 0,
+      successfulSessions: 0,
+      averageRating: 0,
+    },
+    canHelpWith: [],
+    wantToLearn: [],
+  };
+}
 
 export default async function ProfilePage() {
-  // Verifikasi Auth dari Cookie
+  // 1. Verifikasi Token dari Cookie
   const token = (await cookies()).get("token")?.value;
 
   if (!token) {
@@ -26,35 +103,8 @@ export default async function ProfilePage() {
     redirect("/auth/login");
   }
 
-  // Data disesuaikan persis dengan tampilan gambar
-  const user = {
-    name: payload?.full_name || "Fadhlan Faidh",
-    username: "@fadhlan.dev",
-    location: "Yogyakarta, Indonesia",
-    rating: 4.8,
-    reviewsCount: 32,
-    bioHeadline:
-      "Web developer passionate about building useful products and sharing knowledge with others.",
-    aboutMe:
-      "I love building web applications and exploring new technologies. Let's learn and grow together!",
-    avatar: "/king.png",
-    isOnline: true,
-    stats: {
-      learningPartners: 12,
-      successfulSessions: 48,
-      averageRating: 4.8,
-    },
-    canHelpWith: [
-      { name: "React", level: "Advanced", icon: "⚛️" },
-      { name: "Next.js", level: "Advanced", icon: "▲" },
-      { name: "Laravel", level: "Intermediate", icon: "🔴" },
-      { name: "PostgreSQL", level: "Intermediate", icon: "🐘" },
-    ],
-    wantToLearn: [
-      { name: "UI Design", level: "Beginner", icon: "🎨" },
-      { name: "Bahasa Jepang", level: "Beginner", icon: "🏮" },
-    ],
-  };
+  // 2. Fetch Data Profil Berdasarkan Token Session
+  const user = await getUserProfile(token, payload);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 text-slate-800">
@@ -119,12 +169,17 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        {/* Edit Profile Button */}
+        {/* Edit Profile Button Modal Component */}
         <div className="flex justify-center md:justify-end">
-          <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all">
-            <Pencil className="h-4 w-4 text-slate-500" />
-            Edit Profile
-          </button>
+          <EditProfileModal
+            initialData={{
+              name: user.name,
+              username: user.username,
+              location: user.location,
+              bioHeadline: user.bioHeadline,
+              aboutMe: user.aboutMe,
+            }}
+          />
         </div>
       </div>
 
@@ -142,22 +197,28 @@ export default async function ProfilePage() {
           </div>
 
           <div className="space-y-2.5">
-            {user.canHelpWith.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base">{item.icon}</span>
-                  <span className="text-sm font-semibold text-slate-800">
-                    {item.name}
+            {user.canHelpWith.length > 0 ? (
+              user.canHelpWith.map((item) => (
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">{item.icon || "💡"}</span>
+                    <span className="text-sm font-semibold text-slate-800">
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-100">
+                    {item.level}
                   </span>
                 </div>
-                <span className="text-xs text-slate-500 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-100">
-                  {item.level}
-                </span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-xs text-slate-400">
+                Belum menambahkan skill yang dikuasai.
+              </p>
+            )}
           </div>
         </div>
 
@@ -173,22 +234,28 @@ export default async function ProfilePage() {
           </div>
 
           <div className="space-y-2.5">
-            {user.wantToLearn.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base">{item.icon}</span>
-                  <span className="text-sm font-semibold text-slate-800">
-                    {item.name}
+            {user.wantToLearn.length > 0 ? (
+              user.wantToLearn.map((item) => (
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">{item.icon || "🎯"}</span>
+                    <span className="text-sm font-semibold text-slate-800">
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-100">
+                    {item.level}
                   </span>
                 </div>
-                <span className="text-xs text-slate-500 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-100">
-                  {item.level}
-                </span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-xs text-slate-400">
+                Belum menambahkan skill yang ingin dipelajari.
+              </p>
+            )}
           </div>
         </div>
 

@@ -5,36 +5,15 @@ import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const partners = [
-  {
-    name: "Andi Pratama",
-    avatar: "/king.png",
-    match: 96,
-    teach: "UI Design",
-    learn: "React",
-  },
-  {
-    name: "Budi Santoso",
-    avatar: "/king.png",
-    match: 85,
-    teach: "JavaScript",
-    learn: "Python",
-  },
-  {
-    name: "Citra Dewi",
-    avatar: "/king.png",
-    match: 92,
-    teach: "Marketing",
-    learn: "Sales",
-  },
-  {
-    name: "Dika Pratama",
-    avatar: "/king.png",
-    match: 78,
-    teach: "Photography",
-    learn: "Video Editing",
-  },
-];
+// Interface untuk data dari API
+interface PartnerApiResponse {
+  id: string;
+  avatar_url: string | null;
+  full_name: string;
+  skill_teach: { name: string }[] | string[];
+  skill_learn: { name: string }[] | string[];
+  match: string; // "100%"
+}
 
 const skills = [
   {
@@ -64,6 +43,58 @@ const skills = [
   },
 ];
 
+async function getPartnerRecommendations(token: string) {
+  try {
+    const res = await fetch("http://localhost:3000/api/partner/recomendation", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `token=${token}`,
+      },
+      cache: "no-store", // Selalu ambil data terbaru (Server-Side Rendering)
+    });
+
+    if (!res.ok) {
+      console.error("Failed to fetch recommendations:", res.statusText);
+      return [];
+    }
+
+    const data: PartnerApiResponse[] = await res.json();
+
+    // Mapping response API ke format yang diharapkan PartnerCard
+    return data.map((item) => {
+      // Membersihkan string match dari karakter '%' jika PartnerCard butuh angka (misal: "100%" -> 100)
+      const numericMatch = parseInt(item.match.replace("%", ""), 10) || 0;
+
+      // Ambil skill pertama atau fallback text jika array masih kosong
+      const teachSkill =
+        item.skill_teach.length > 0
+          ? typeof item.skill_teach[0] === "string"
+            ? item.skill_teach[0]
+            : item.skill_teach[0].name
+          : "Not specified";
+
+      const learnSkill =
+        item.skill_learn.length > 0
+          ? typeof item.skill_learn[0] === "string"
+            ? item.skill_learn[0]
+            : item.skill_learn[0].name
+          : "Not specified";
+
+      return {
+        id: item.id,
+        name: item.full_name,
+        avatar: item.avatar_url || "/king.png", // Fallback avatar jika null
+        match: numericMatch,
+        teach: teachSkill,
+        learn: learnSkill,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching partner recommendations:", error);
+    return [];
+  }
+}
+
 export default async function Dashboard() {
   const token = (await cookies()).get("token")?.value;
 
@@ -77,6 +108,9 @@ export default async function Dashboard() {
   } catch {
     redirect("/auth/login");
   }
+
+  // Fetch data dari API Backend
+  const partners = await getPartnerRecommendations(token);
 
   return (
     <section className="mx-auto max-w-7xl space-y-8 pt-20 pb-10 px-4 sm:px-6">
@@ -112,11 +146,17 @@ export default async function Dashboard() {
 
         {/* Partner Cards */}
         <div className="flex flex-col gap-4">
-          <HorizontalScroll>
-            {partners.map((partner) => (
-              <PartnerCard key={partner.name} partner={partner} />
-            ))}
-          </HorizontalScroll>
+          {partners.length > 0 ? (
+            <HorizontalScroll>
+              {partners.map((partner) => (
+                <PartnerCard key={partner.id} partner={partner} />
+              ))}
+            </HorizontalScroll>
+          ) : (
+            <div className="rounded-xl border border-dashed p-8 text-center text-slate-500">
+              Belum ada rekomendasi partner yang ditemukan.
+            </div>
+          )}
         </div>
       </div>
 
