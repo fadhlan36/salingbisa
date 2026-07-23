@@ -2,7 +2,7 @@ import { verifyToken } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PUT(request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
 
   if (!token) {
