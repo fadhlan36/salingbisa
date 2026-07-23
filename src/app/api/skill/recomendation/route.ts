@@ -28,26 +28,17 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await supabaseAdmin
-    .from("skills")
-    .select("id, skill_name")
-    .neq("user_id", user?.userId);
+    .from("skill_recomendation")
+    .select("*");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const skillCounts = data?.reduce(
-    (acc, skill) => {
-      acc[skill.skill_name] = (acc[skill.skill_name] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
-
   const response = data.map((skill) => ({
     id: skill.id,
-    skill_name: skill.skill_name,
-    skillCount: skillCounts[skill.skill_name],
+    skill_name: skill.name,
+    skillCount: skill.total_people,
   }));
 
   return NextResponse.json(response);
