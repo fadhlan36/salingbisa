@@ -5,9 +5,35 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, MapPin, Star, Users, CheckCircle2 } from "lucide-react";
 import EditProfileModal from "@/components/profile/edit-profile-modal";
 
-// Type definition untuk response API Profile
+interface ApiProfileResponse {
+  full_name?: string;
+  email?: string;
+  username?: string;
+  location?: string;
+  about_me?: string;
+  bio?: string;
+  avatar_url?: string;
+  is_online?: boolean;
+  rating?: number;
+  reviews_count?: number;
+  stats?: {
+    learning_partners?: number;
+    successful_sessions?: number;
+    average_rating?: number;
+  };
+  skill_teach?: any;
+  skill_learn?: any;
+}
+
+interface SkillItem {
+  name: string;
+  level: string;
+  icon: string;
+}
+
 interface UserProfile {
   name: string;
+  email: string;
   username: string;
   location: string;
   rating: number;
@@ -21,8 +47,67 @@ interface UserProfile {
     successfulSessions: number;
     averageRating: number;
   };
-  canHelpWith: { name: string; level: string; icon: string }[];
-  wantToLearn: { name: string; level: string; icon: string }[];
+  canHelpWith: SkillItem[];
+  wantToLearn: SkillItem[];
+}
+
+/**
+ * Helper untuk memproses data skill_teach & skill_learn
+ * Mendukung format:
+ * 1. Array of String: ["React", "Node.js"]
+ * 2. Array of Objects: [{ name: "React", level: "Advanced" }, { skill_name: "Python" }]
+ * 3. Stringified JSON: "[\"React\", \"Node.js\"]"
+ */
+function formatSkillList(
+  skillsInput?: any,
+  defaultIcon: string = "💡",
+): SkillItem[] {
+  if (!skillsInput) return [];
+
+  let parsedSkills = skillsInput;
+
+  // Jika data dikirim sebagai JSON String dari DB, coba parse lebih dulu
+  if (typeof skillsInput === "string") {
+    try {
+      parsedSkills = JSON.parse(skillsInput);
+    } catch {
+      return [{ name: skillsInput, level: "Intermediate", icon: defaultIcon }];
+    }
+  }
+
+  // Pastikan bentuknya Array
+  if (!Array.isArray(parsedSkills)) return [];
+
+  // Map tiap elemen ke format SkillItem
+  return parsedSkills
+    .map((item) => {
+      if (typeof item === "string") {
+        return { name: item, level: "Intermediate", icon: defaultIcon };
+      }
+
+      if (typeof item === "object" && item !== null) {
+        const name =
+          item.name ||
+          item.skill_name ||
+          item.title ||
+          item.name_skill ||
+          item.skill ||
+          "";
+
+        if (!name) return null;
+
+        return {
+          name: String(name),
+          level: item.level || item.skill_level || "Intermediate",
+          icon: item.icon || defaultIcon,
+        };
+      }
+
+      return null;
+    })
+    .filter(
+      (item): item is SkillItem => item !== null && item.name.trim() !== "",
+    );
 }
 
 async function getUserProfile(
@@ -30,46 +115,58 @@ async function getUserProfile(
   payload: any,
 ): Promise<UserProfile> {
   try {
-    // Panggil API profile backend
     const res = await fetch("http://localhost:3000/api/user/profile", {
       headers: {
         Authorization: `Bearer ${token}`,
         Cookie: `token=${token}`,
       },
-      cache: "no-store", // Agar data selalu paling up-to-date saat direfresh
+      cache: "no-store",
     });
 
     if (res.ok) {
-      const data = await res.json();
-      return {
-        name: data.full_name || payload?.full_name || "User",
-        username:
-          data.username || payload?.email
-            ? `@${payload.email.split("@")[0]}`
-            : "@user",
-        location: data.location || "Lokasi belum diatur",
-        rating: data.rating ?? 0,
-        reviewsCount: data.reviews_count ?? 0,
-        bioHeadline: data.bio_headline || "Belum ada bio singkat.",
-        aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
-        avatar: data.avatar_url || "/king.png",
-        isOnline: data.is_online ?? true,
-        stats: {
-          learningPartners: data.stats?.learning_partners ?? 0,
-          successfulSessions: data.stats?.successful_sessions ?? 0,
-          averageRating: data.stats?.average_rating ?? 0,
-        },
-        canHelpWith: data.can_help_with || [],
-        wantToLearn: data.want_to_learn || [],
-      };
+      const result = await res.json();
+
+      // Ambil item pertama dari array response API
+      const data: ApiProfileResponse = Array.isArray(result)
+        ? result[0]
+        : result;
+
+      if (data) {
+        return {
+          name: data.full_name || payload?.full_name || "User",
+          email: data.email || payload?.email || "",
+          username: data.username
+            ? `@${data.username.replace(/^@/, "")}`
+            : payload?.email
+              ? `@${payload.email.split("@")[0]}`
+              : "@user",
+          location: data.location || "Lokasi belum diatur",
+          rating: data.rating ?? 0,
+          reviewsCount: data.reviews_count ?? 0,
+          bioHeadline: data.bio || "Belum ada bio singkat.",
+          aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
+          avatar: data.avatar_url || "/profile.jpg",
+          isOnline: data.is_online ?? true,
+          stats: {
+            learningPartners: data.stats?.learning_partners ?? 0,
+            successfulSessions: data.stats?.successful_sessions ?? 0,
+            averageRating: data.stats?.average_rating ?? 0,
+          },
+          canHelpWith: formatSkillList(data.skill_teach, "💡"),
+          wantToLearn: formatSkillList(data.skill_learn, "🎯"),
+        };
+      }
+    } else {
+      console.error("Gagal mengambil data profil:", res.status, res.statusText);
     }
   } catch (error) {
-    console.error("Gagal mengambil data profil:", error);
+    console.error("Error fetching profile API:", error);
   }
 
-  // Fallback data jika API belum siap / gagal di-fetch
+  // Fallback data
   return {
     name: payload?.full_name || "User",
+    email: payload?.email || "",
     username: payload?.email ? `@${payload.email.split("@")[0]}` : "@user",
     location: "Belum diatur",
     rating: 0,
@@ -89,7 +186,6 @@ async function getUserProfile(
 }
 
 export default async function ProfilePage() {
-  // 1. Verifikasi Token dari Cookie
   const token = (await cookies()).get("token")?.value;
 
   if (!token) {
@@ -103,7 +199,6 @@ export default async function ProfilePage() {
     redirect("/auth/login");
   }
 
-  // 2. Fetch Data Profil Berdasarkan Token Session
   const user = await getUserProfile(token, payload);
 
   return (
@@ -174,10 +269,13 @@ export default async function ProfilePage() {
           <EditProfileModal
             initialData={{
               name: user.name,
+              email: user.email,
               username: user.username,
               location: user.location,
               bioHeadline: user.bioHeadline,
               aboutMe: user.aboutMe,
+              canHelpWith: user.canHelpWith.map((item) => item.name),
+              wantToLearn: user.wantToLearn.map((item) => item.name),
             }}
           />
         </div>
@@ -191,20 +289,17 @@ export default async function ProfilePage() {
             <h2 className="font-bold text-slate-900 text-base">
               I Can Help With
             </h2>
-            <button className="text-sm font-medium text-indigo-600 hover:underline">
-              Edit
-            </button>
           </div>
 
           <div className="space-y-2.5">
             {user.canHelpWith.length > 0 ? (
-              user.canHelpWith.map((item) => (
+              user.canHelpWith.map((item, index) => (
                 <div
-                  key={item.name}
+                  key={`${item.name}-${index}`}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-base">{item.icon || "💡"}</span>
+                    <span className="text-base">{item.icon}</span>
                     <span className="text-sm font-semibold text-slate-800">
                       {item.name}
                     </span>
@@ -228,20 +323,17 @@ export default async function ProfilePage() {
             <h2 className="font-bold text-slate-900 text-base">
               I Want to Learn
             </h2>
-            <button className="text-sm font-medium text-indigo-600 hover:underline">
-              Edit
-            </button>
           </div>
 
           <div className="space-y-2.5">
             {user.wantToLearn.length > 0 ? (
-              user.wantToLearn.map((item) => (
+              user.wantToLearn.map((item, index) => (
                 <div
-                  key={item.name}
+                  key={`${item.name}-${index}`}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-base">{item.icon || "🎯"}</span>
+                    <span className="text-base">{item.icon}</span>
                     <span className="text-sm font-semibold text-slate-800">
                       {item.name}
                     </span>

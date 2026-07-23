@@ -2,85 +2,100 @@
 
 import { useState } from "react";
 import { Pencil, X, Plus, Trash2 } from "lucide-react";
-
-export interface SkillItem {
-  name: string;
-  level: string;
-  icon?: string;
-}
+import { updateProfile } from "@/lib/actions/profile";
 
 export interface ProfileFormData {
   name: string;
+  email: string;
   username: string;
   location: string;
   bioHeadline: string;
   aboutMe: string;
-  avatar?: string;
-  canHelpWith?: SkillItem[];
-  wantToLearn?: SkillItem[];
+  canHelpWith?: string[];
+  wantToLearn?: string[];
 }
 
 interface EditProfileModalProps {
   initialData: ProfileFormData;
-  onSave?: (updatedData: ProfileFormData) => Promise<void> | void;
 }
 
 export default function EditProfileModal({
   initialData,
-  onSave,
 }: EditProfileModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState<ProfileFormData>({
     name: initialData.name || "",
+    email: initialData.email || "",
     username: initialData.username || "",
     location: initialData.location || "",
     bioHeadline: initialData.bioHeadline || "",
     aboutMe: initialData.aboutMe || "",
-    avatar: initialData.avatar || "/king.png",
     canHelpWith: initialData.canHelpWith || [],
     wantToLearn: initialData.wantToLearn || [],
   });
 
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // State untuk input temporary penambahan Skill
-  const [newHelpSkill, setNewHelpSkill] = useState({
-    name: "",
-    level: "Beginner",
-    icon: "💡",
-  });
-  const [newLearnSkill, setNewLearnSkill] = useState({
-    name: "",
-    level: "Beginner",
-    icon: "🎯",
-  });
+  // Input temporary untuk skill
+  const [newHelpSkill, setNewHelpSkill] = useState("");
+  const [newLearnSkill, setNewLearnSkill] = useState("");
+
+  const handleOpenModal = () => {
+    setFormData({
+      name: initialData.name || "",
+      email: initialData.email || "",
+      username: initialData.username || "",
+      location: initialData.location || "",
+      bioHeadline: initialData.bioHeadline || "",
+      aboutMe: initialData.aboutMe || "",
+      canHelpWith: initialData.canHelpWith || [],
+      wantToLearn: initialData.wantToLearn || [],
+    });
+    setErrorMessage("");
+    setIsOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage("");
 
     try {
-      if (onSave) {
-        await onSave(formData);
+      const payload = {
+        full_name: formData.name,
+        email: formData.email,
+        username: formData.username,
+        location: formData.location,
+        bio: formData.bioHeadline,
+        about_me: formData.aboutMe,
+        teachSkill: formData.canHelpWith || [],
+        learnSkill: formData.wantToLearn || [],
+      };
+
+      const result = await updateProfile(payload);
+
+      if (result.success) {
+        setIsOpen(false);
       } else {
-        console.log("Updated profile data:", formData);
+        setErrorMessage(result.message || "Gagal memperbarui profil.");
       }
-      setIsOpen(false);
     } catch (error) {
       console.error("Failed to save profile:", error);
+      setErrorMessage("Terjadi kesalahan sistem saat menyimpan.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper untuk Manipulasi Skill "I Can Help With"
+  // Helper Tambah/Hapus Skill Teach
   const addHelpSkill = () => {
-    if (!newHelpSkill.name.trim()) return;
+    if (!newHelpSkill.trim()) return;
     setFormData((prev) => ({
       ...prev,
-      canHelpWith: [...(prev.canHelpWith || []), newHelpSkill],
+      canHelpWith: [...(prev.canHelpWith || []), newHelpSkill.trim()],
     }));
-    setNewHelpSkill({ name: "", level: "Beginner", icon: "💡" });
+    setNewHelpSkill("");
   };
 
   const removeHelpSkill = (index: number) => {
@@ -90,14 +105,14 @@ export default function EditProfileModal({
     }));
   };
 
-  // Helper untuk Manipulasi Skill "I Want to Learn"
+  // Helper Tambah/Hapus Skill Learn
   const addLearnSkill = () => {
-    if (!newLearnSkill.name.trim()) return;
+    if (!newLearnSkill.trim()) return;
     setFormData((prev) => ({
       ...prev,
-      wantToLearn: [...(prev.wantToLearn || []), newLearnSkill],
+      wantToLearn: [...(prev.wantToLearn || []), newLearnSkill.trim()],
     }));
-    setNewLearnSkill({ name: "", level: "Beginner", icon: "🎯" });
+    setNewLearnSkill("");
   };
 
   const removeLearnSkill = (index: number) => {
@@ -109,20 +124,17 @@ export default function EditProfileModal({
 
   return (
     <>
-      {/* Tombol Trigger */}
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpenModal}
         className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all"
       >
         <Pencil className="h-4 w-4 text-slate-500" />
         Edit Profile
       </button>
 
-      {/* Pop-up Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl space-y-5 border border-slate-100">
-            {/* Header Modal */}
             <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-slate-900">Edit Profile</h3>
               <button
@@ -134,13 +146,17 @@ export default function EditProfileModal({
               </button>
             </div>
 
-            {/* Form Edit */}
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-medium border border-red-200">
+                {errorMessage}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Basic Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Full Name
+                    Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -155,7 +171,7 @@ export default function EditProfileModal({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Username
+                    Username <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -172,6 +188,21 @@ export default function EditProfileModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
                     Location
                   </label>
                   <input
@@ -183,26 +214,11 @@ export default function EditProfileModal({
                     className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Avatar URL
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.avatar}
-                    onChange={(e) =>
-                      setFormData({ ...formData, avatar: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    placeholder="/king.png"
-                  />
-                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Headline Bio
+                  Bio (Headline)
                 </label>
                 <input
                   type="text"
@@ -230,22 +246,19 @@ export default function EditProfileModal({
 
               <hr className="border-slate-100 my-2" />
 
-              {/* Section: I Can Help With */}
+              {/* Teach Skills Section */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700">
-                  I Can Help With
+                  I Can Help With (Teach Skills)
                 </label>
 
-                {/* List Item Skill */}
                 <div className="flex flex-wrap gap-2">
-                  {formData.canHelpWith?.map((item, idx) => (
+                  {formData.canHelpWith?.map((skillName, idx) => (
                     <span
                       key={idx}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 border"
                     >
-                      <span>{item.icon}</span>
-                      <span>{item.name}</span>
-                      <span className="text-slate-400">({item.level})</span>
+                      <span>💡 {skillName}</span>
                       <button
                         type="button"
                         onClick={() => removeHelpSkill(idx)}
@@ -257,31 +270,20 @@ export default function EditProfileModal({
                   ))}
                 </div>
 
-                {/* Input Tambah Skill */}
                 <div className="flex items-center gap-2 pt-1">
                   <input
                     type="text"
-                    placeholder="Nama skill (e.g. React)"
-                    value={newHelpSkill.name}
-                    onChange={(e) =>
-                      setNewHelpSkill({ ...newHelpSkill, name: e.target.value })
-                    }
+                    placeholder="Nama skill (misal: React)"
+                    value={newHelpSkill}
+                    onChange={(e) => setNewHelpSkill(e.target.value)}
                     className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addHelpSkill();
+                      }
+                    }}
                   />
-                  <select
-                    value={newHelpSkill.level}
-                    onChange={(e) =>
-                      setNewHelpSkill({
-                        ...newHelpSkill,
-                        level: e.target.value,
-                      })
-                    }
-                    className="rounded-xl border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                  </select>
                   <button
                     type="button"
                     onClick={addHelpSkill}
@@ -292,22 +294,19 @@ export default function EditProfileModal({
                 </div>
               </div>
 
-              {/* Section: I Want to Learn */}
+              {/* Learn Skills Section */}
               <div className="space-y-2 pt-2">
                 <label className="block text-xs font-bold text-slate-700">
-                  I Want to Learn
+                  I Want to Learn (Learn Skills)
                 </label>
 
-                {/* List Item Skill */}
                 <div className="flex flex-wrap gap-2">
-                  {formData.wantToLearn?.map((item, idx) => (
+                  {formData.wantToLearn?.map((skillName, idx) => (
                     <span
                       key={idx}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 border"
                     >
-                      <span>{item.icon}</span>
-                      <span>{item.name}</span>
-                      <span className="text-slate-400">({item.level})</span>
+                      <span>🎯 {skillName}</span>
                       <button
                         type="button"
                         onClick={() => removeLearnSkill(idx)}
@@ -319,34 +318,20 @@ export default function EditProfileModal({
                   ))}
                 </div>
 
-                {/* Input Tambah Skill */}
                 <div className="flex items-center gap-2 pt-1">
                   <input
                     type="text"
-                    placeholder="Nama skill (e.g. Japanese)"
-                    value={newLearnSkill.name}
-                    onChange={(e) =>
-                      setNewLearnSkill({
-                        ...newLearnSkill,
-                        name: e.target.value,
-                      })
-                    }
+                    placeholder="Nama skill (misal: Python)"
+                    value={newLearnSkill}
+                    onChange={(e) => setNewLearnSkill(e.target.value)}
                     className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addLearnSkill();
+                      }
+                    }}
                   />
-                  <select
-                    value={newLearnSkill.level}
-                    onChange={(e) =>
-                      setNewLearnSkill({
-                        ...newLearnSkill,
-                        level: e.target.value,
-                      })
-                    }
-                    className="rounded-xl border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                  </select>
                   <button
                     type="button"
                     onClick={addLearnSkill}
@@ -357,7 +342,6 @@ export default function EditProfileModal({
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
                 <button
                   type="button"
