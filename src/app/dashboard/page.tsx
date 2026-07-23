@@ -76,7 +76,7 @@ async function getPartnerRecommendations(token: string) {
       return {
         id: item.id,
         name: item.full_name,
-        avatar: item.avatar_url || "/king.png",
+        avatar: item.avatar_url || "/profile.jpg",
         match: numericMatch,
         teach: teachSkill,
         learn: learnSkill,
