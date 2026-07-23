@@ -3,6 +3,14 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verify } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
+type PartnerRecommendation = {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  teach: string[];
+  learn: string[];
+};
+
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
 
@@ -16,35 +24,30 @@ export async function GET(request: NextRequest) {
 
   try {
     user = verifyToken(token);
-  } catch (error) {
+  } catch {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
     });
   }
 
-  //   let user = { userId: "24eccc46-3ce4-4d1d-a2bd-fa34b15f0ed6" };
-
-  const { data, error } = await supabaseAdmin
-    .from("users")
-    .select("id, full_name, username, avatar_url, skills(id, skill_name, type)")
-    .neq("id", user?.userId);
+  const { data, error } = await supabaseAdmin.rpc("partner_recommendation");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const recomendation = data.map((item) => ({
+  const partners = (data as PartnerRecommendation[]).filter(
+    (partner) => partner.id !== user?.userId,
+  );
+
+  const response = partners.map((item) => ({
     id: item.id,
     avatar_url: item.avatar_url,
     full_name: item.full_name,
-    skill_teach: item.skills.filter((skill) => {
-      skill.type === "teach";
-    }),
-    skill_learn: item.skills.filter((skill) => {
-      skill.type === "learn";
-    }),
+    skill_teach: item.teach,
+    skill_learn: item.learn,
     match: "100%",
   }));
 
-  return NextResponse.json(recomendation);
+  return NextResponse.json(response);
 }
