@@ -29,7 +29,9 @@ export async function GET(request: NextRequest, { params }: Props) {
 
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("id, email, full_name, username, location, about_me, bio")
+    .select(
+      "id, email, full_name, username, location, about_me, bio, user_skills(type, skills(id,name))",
+    )
     .eq("username", username)
     .single();
 
@@ -41,10 +43,20 @@ export async function GET(request: NextRequest, { params }: Props) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 
+  const teachSkill = data.user_skills
+    .filter((item) => item.type === "teach")
+    .map((item) => item.skills);
+
+  const learnSkill = data.user_skills
+    .filter((item) => item.type === "learn")
+    .map((item) => item.skills);
+
+  const { user_skills, ...userData } = data;
+
   return NextResponse.json(
     {
-      message: "Success",
-      data,
+      message: "Berhasil mengambil data profile",
+      data: { ...userData, teachSkill, learnSkill },
     },
     {
       status: 200,

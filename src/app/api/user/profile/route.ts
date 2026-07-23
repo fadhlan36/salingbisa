@@ -19,22 +19,34 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("id, email, full_name, username, location, about_me, bio")
-    .eq("id", user?.userId);
+    .select(
+      "id, email, full_name, username, location, about_me, bio, user_skills(type, skills(id,name))",
+    )
+    .eq("id", user?.userId)
+    .single();
 
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 
-  const response = data.map((item) => ({
-    id: item.id,
-    email: item.email,
-    full_name: item.full_name,
-    username: item.username,
-    location: item.location,
-    about_me: item.about_me,
-    bio: item.bio,
-  }));
+  const teachSkill = data.user_skills
+    .filter((item) => item.type === "teach")
+    .map((item) => item.skills);
 
-  return NextResponse.json(response);
+  const learnSkill = data.user_skills
+    .filter((item) => item.type === "learn")
+    .map((item) => item.skills);
+
+  const { user_skills, ...userData } = data;
+
+  const response = {
+    message: "Berhasil mengambil data my profile",
+    data: {
+      ...userData,
+      teachSkill,
+      learnSkill,
+    },
+  };
+
+  return NextResponse.json(response, { status: 200 });
 }
