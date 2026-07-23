@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await supabaseAdmin
-    .from("skill_recomendation")
+    .from("skill_recommendation")
     .select("*");
 
   if (error) {
