@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("skill_recommendation")
-    .select("*");
+    .select("*")
+    .neq("user_id", user?.userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
