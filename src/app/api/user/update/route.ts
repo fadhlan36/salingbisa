@@ -56,34 +56,78 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { error: errorDeleteSkill } = await supabaseAdmin
-    .from("skills")
+    .from("user_skills")
     .delete()
     .eq("user_id", user?.userId);
 
   if (errorDeleteSkill) {
-    return NextResponse.json({ error: errorDeleteSkill.message });
+    return NextResponse.json(
+      { error: errorDeleteSkill.message },
+      { status: 500 },
+    );
+  }
+
+  const allSkillNames = [...teachSkill, ...learnSkill];
+
+  const { data: skillData, error: errorSkillData } = await supabaseAdmin
+    .from("skills")
+    .select("id, name")
+    .in("name", allSkillNames);
+
+  if (errorSkillData) {
+    return NextResponse.json(
+      { error: errorSkillData.message },
+      { status: 500 },
+    );
+  }
+
+  const skillMap = new Map(skillData.map((skill) => [skill.name, skill.id]));
+
+  const missingSkills = allSkillNames.filter(
+    (name: string) => !skillMap.has(name),
+  );
+
+  if (missingSkills.length > 0) {
+    return NextResponse.json(
+      {
+        error: "Beberapa skill tidak ditemukan",
+        missingSkills,
+      },
+      { status: 400 },
+    );
   }
 
   const skills = [
-    ...(teachSkill || []).map((skill: string) => ({
+    ...(teachSkill ?? []).map((name: string) => ({
       user_id: user?.userId,
-      skill_name: skill,
+      skill_id: skillMap.get(name),
       type: "teach",
     })),
-    ...(learnSkill || []).map((skill: string) => ({
+    ...(learnSkill || []).map((name: string) => ({
       user_id: user?.userId,
-      skill_name: skill,
+      skill_id: skillMap.get(name),
       type: "learn",
     })),
   ];
 
+  const { error: errorInsertSkill } = await supabaseAdmin
+    .from("user_skills")
+    .insert(skills);
+
+  if (errorInsertSkill) {
+    return NextResponse.json(
+      { error: errorInsertSkill.message },
+      { status: 500 },
+    );
+  }
+
   const { data: dataSkill, error: errorSkill } = await supabaseAdmin
-    .from("skills")
-    .insert(skills)
-    .select("skill_name, type");
+    .from("user_skills")
+    .select("type, skills(id, name)")
+    .eq("user_id", user?.userId);
 
   if (errorSkill) {
-    return NextResponse.json({ error: errorSkill.message });
+    return NextResponse.json({ error: errorSkill.message }, { status: 500 });
   }
 
   const data = {
