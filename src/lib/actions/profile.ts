@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 export async function updateProfile(formData: {
@@ -21,22 +21,30 @@ export async function updateProfile(formData: {
     }
 
     try {
-        const res = await fetch("http://localhost:3000/api/user/update", {
+        const payload = {
+            full_name: formData.full_name,
+            email: formData.email,
+            username: formData.username.replace(/^@/, ""),
+            location: formData.location,
+            bio: formData.bio,
+            about_me: formData.about_me,
+            teachSkill: formData.teachSkill || [],
+            learnSkill: formData.learnSkill || [],
+        };
+
+        // Ambil host/domain aktif secara dinamis (mencegah error jika port bukan 3000)
+        const headerList = await headers();
+        const host = headerList.get("host") || "localhost:3000";
+        const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+        const apiUrl = `${protocol}://${host}/api/user/update`;
+
+        const res = await fetch(apiUrl, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
                 Cookie: `token=${token}`,
             },
-            body: JSON.stringify({
-                full_name: formData.full_name,
-                email: formData.email,
-                username: formData.username.replace(/^@/, ""), // Menghapus '@' jika diketik user
-                location: formData.location,
-                bio: formData.bio,
-                about_me: formData.about_me,
-                teachSkill: formData.teachSkill,
-                learnSkill: formData.learnSkill,
-            }),
+            body: JSON.stringify(payload),
         });
 
         const result = await res.json();
@@ -44,12 +52,16 @@ export async function updateProfile(formData: {
         if (!res.ok) {
             return {
                 success: false,
-                message: result.error || "Gagal memperbarui profil",
+                message: result?.error || "Gagal memperbarui profil",
             };
         }
 
         revalidatePath("/dashboard/profile");
-        return { success: true, data: result.response?.data };
+        revalidatePath("/profile");
+
+        const profileData = result?.response?.data || result?.data;
+
+        return { success: true, data: profileData };
     } catch (error) {
         console.error("Error updating profile:", error);
         return { success: false, message: "Terjadi kesalahan koneksi server." };

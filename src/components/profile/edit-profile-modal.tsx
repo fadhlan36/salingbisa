@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, X, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Pencil, X, Trash2 } from "lucide-react";
 import { updateProfile } from "@/lib/actions/profile";
 
 export interface ProfileFormData {
@@ -11,18 +12,41 @@ export interface ProfileFormData {
   location: string;
   bioHeadline: string;
   aboutMe: string;
-  canHelpWith?: string[];
-  wantToLearn?: string[];
+  canHelpWith?: any[];
+  wantToLearn?: any[];
 }
 
 interface EditProfileModalProps {
   initialData: ProfileFormData;
 }
 
+const AVAILABLE_SKILLS = [
+  "Laravel",
+  "React.js",
+  "Next.js",
+  "UI/UX",
+  "Marketing",
+  "Investasi",
+  "Python",
+  "Node.js",
+];
+
+// Helper parser untuk mengkonversi object/string ke array string bersih
+const parseSkillNames = (skills?: any[]): string[] => {
+  if (!skills || !Array.isArray(skills)) return [];
+  return skills
+    .map((s) =>
+      typeof s === "object" ? s.skill_name || s.name || s.title || "" : s,
+    )
+    .filter(Boolean);
+};
+
 export default function EditProfileModal({
   initialData,
 }: EditProfileModalProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+
   const [formData, setFormData] = useState<ProfileFormData>({
     name: initialData.name || "",
     email: initialData.email || "",
@@ -30,16 +54,12 @@ export default function EditProfileModal({
     location: initialData.location || "",
     bioHeadline: initialData.bioHeadline || "",
     aboutMe: initialData.aboutMe || "",
-    canHelpWith: initialData.canHelpWith || [],
-    wantToLearn: initialData.wantToLearn || [],
+    canHelpWith: parseSkillNames(initialData.canHelpWith),
+    wantToLearn: parseSkillNames(initialData.wantToLearn),
   });
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  // Input temporary untuk skill
-  const [newHelpSkill, setNewHelpSkill] = useState("");
-  const [newLearnSkill, setNewLearnSkill] = useState("");
 
   const handleOpenModal = () => {
     setFormData({
@@ -49,8 +69,8 @@ export default function EditProfileModal({
       location: initialData.location || "",
       bioHeadline: initialData.bioHeadline || "",
       aboutMe: initialData.aboutMe || "",
-      canHelpWith: initialData.canHelpWith || [],
-      wantToLearn: initialData.wantToLearn || [],
+      canHelpWith: parseSkillNames(initialData.canHelpWith),
+      wantToLearn: parseSkillNames(initialData.wantToLearn),
     });
     setErrorMessage("");
     setIsOpen(true);
@@ -62,6 +82,9 @@ export default function EditProfileModal({
     setErrorMessage("");
 
     try {
+      const teachSkill = parseSkillNames(formData.canHelpWith);
+      const learnSkill = parseSkillNames(formData.wantToLearn);
+
       const payload = {
         full_name: formData.name,
         email: formData.email,
@@ -69,14 +92,15 @@ export default function EditProfileModal({
         location: formData.location,
         bio: formData.bioHeadline,
         about_me: formData.aboutMe,
-        teachSkill: formData.canHelpWith || [],
-        learnSkill: formData.wantToLearn || [],
+        teachSkill,
+        learnSkill,
       };
 
       const result = await updateProfile(payload);
 
       if (result.success) {
         setIsOpen(false);
+        router.refresh();
       } else {
         setErrorMessage(result.message || "Gagal memperbarui profil.");
       }
@@ -88,39 +112,48 @@ export default function EditProfileModal({
     }
   };
 
-  // Helper Tambah/Hapus Skill Teach
-  const addHelpSkill = () => {
-    if (!newHelpSkill.trim()) return;
-    setFormData((prev) => ({
-      ...prev,
-      canHelpWith: [...(prev.canHelpWith || []), newHelpSkill.trim()],
-    }));
-    setNewHelpSkill("");
+  const handleSelectHelpSkill = (skill: string) => {
+    if (!skill) return;
+    const currentSkills = parseSkillNames(formData.canHelpWith);
+    if (!currentSkills.includes(skill)) {
+      setFormData((prev) => ({
+        ...prev,
+        canHelpWith: [...currentSkills, skill],
+      }));
+    }
   };
 
   const removeHelpSkill = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      canHelpWith: prev.canHelpWith?.filter((_, i) => i !== index),
+      canHelpWith: parseSkillNames(prev.canHelpWith).filter(
+        (_, i) => i !== index,
+      ),
     }));
   };
 
-  // Helper Tambah/Hapus Skill Learn
-  const addLearnSkill = () => {
-    if (!newLearnSkill.trim()) return;
-    setFormData((prev) => ({
-      ...prev,
-      wantToLearn: [...(prev.wantToLearn || []), newLearnSkill.trim()],
-    }));
-    setNewLearnSkill("");
+  const handleSelectLearnSkill = (skill: string) => {
+    if (!skill) return;
+    const currentSkills = parseSkillNames(formData.wantToLearn);
+    if (!currentSkills.includes(skill)) {
+      setFormData((prev) => ({
+        ...prev,
+        wantToLearn: [...currentSkills, skill],
+      }));
+    }
   };
 
   const removeLearnSkill = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      wantToLearn: prev.wantToLearn?.filter((_, i) => i !== index),
+      wantToLearn: parseSkillNames(prev.wantToLearn).filter(
+        (_, i) => i !== index,
+      ),
     }));
   };
+
+  const currentHelpSkills = parseSkillNames(formData.canHelpWith);
+  const currentLearnSkills = parseSkillNames(formData.wantToLearn);
 
   return (
     <>
@@ -246,23 +279,23 @@ export default function EditProfileModal({
 
               <hr className="border-slate-100 my-2" />
 
-              {/* Teach Skills Section */}
+              {/* Teach Skills */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700">
                   I Can Help With (Teach Skills)
                 </label>
 
                 <div className="flex flex-wrap gap-2">
-                  {formData.canHelpWith?.map((skillName, idx) => (
+                  {currentHelpSkills.map((skillName, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 border"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700"
                     >
                       <span>💡 {skillName}</span>
                       <button
                         type="button"
                         onClick={() => removeHelpSkill(idx)}
-                        className="text-slate-400 hover:text-red-500 ml-1"
+                        className="text-indigo-400 hover:text-red-500 ml-1"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -270,47 +303,46 @@ export default function EditProfileModal({
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="text"
-                    placeholder="Nama skill (misal: React)"
-                    value={newHelpSkill}
-                    onChange={(e) => setNewHelpSkill(e.target.value)}
-                    className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addHelpSkill();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addHelpSkill}
-                    className="inline-flex items-center gap-1 rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900"
-                  >
-                    <Plus className="h-3 w-3" /> Add
-                  </button>
-                </div>
+                <select
+                  value=""
+                  onChange={(e) => handleSelectHelpSkill(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="" disabled>
+                    + Pilih skill untuk diajarkan...
+                  </option>
+                  {AVAILABLE_SKILLS.map((skill) => (
+                    <option
+                      key={skill}
+                      value={skill}
+                      disabled={currentHelpSkills.includes(skill)}
+                    >
+                      {skill}{" "}
+                      {currentHelpSkills.includes(skill)
+                        ? "(Sudah dipilih)"
+                        : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Learn Skills Section */}
+              {/* Learn Skills */}
               <div className="space-y-2 pt-2">
                 <label className="block text-xs font-bold text-slate-700">
                   I Want to Learn (Learn Skills)
                 </label>
 
                 <div className="flex flex-wrap gap-2">
-                  {formData.wantToLearn?.map((skillName, idx) => (
+                  {currentLearnSkills.map((skillName, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 border"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700"
                     >
                       <span>🎯 {skillName}</span>
                       <button
                         type="button"
                         onClick={() => removeLearnSkill(idx)}
-                        className="text-slate-400 hover:text-red-500 ml-1"
+                        className="text-emerald-400 hover:text-red-500 ml-1"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -318,28 +350,27 @@ export default function EditProfileModal({
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="text"
-                    placeholder="Nama skill (misal: Python)"
-                    value={newLearnSkill}
-                    onChange={(e) => setNewLearnSkill(e.target.value)}
-                    className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addLearnSkill();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addLearnSkill}
-                    className="inline-flex items-center gap-1 rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900"
-                  >
-                    <Plus className="h-3 w-3" /> Add
-                  </button>
-                </div>
+                <select
+                  value=""
+                  onChange={(e) => handleSelectLearnSkill(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="" disabled>
+                    + Pilih skill untuk dipelajari...
+                  </option>
+                  {AVAILABLE_SKILLS.map((skill) => (
+                    <option
+                      key={skill}
+                      value={skill}
+                      disabled={currentLearnSkills.includes(skill)}
+                    >
+                      {skill}{" "}
+                      {currentLearnSkills.includes(skill)
+                        ? "(Sudah dipilih)"
+                        : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">

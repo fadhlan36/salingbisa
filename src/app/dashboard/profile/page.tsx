@@ -6,6 +6,7 @@ import { ArrowLeft, MapPin, Star, Users, CheckCircle2 } from "lucide-react";
 import EditProfileModal from "@/components/profile/edit-profile-modal";
 
 interface ApiProfileResponse {
+  id?: string;
   full_name?: string;
   email?: string;
   username?: string;
@@ -27,7 +28,6 @@ interface ApiProfileResponse {
 
 interface SkillItem {
   name: string;
-  level: string;
   icon: string;
 }
 
@@ -53,10 +53,7 @@ interface UserProfile {
 
 /**
  * Helper untuk memproses data skill_teach & skill_learn
- * Mendukung format:
- * 1. Array of String: ["React", "Node.js"]
- * 2. Array of Objects: [{ name: "React", level: "Advanced" }, { skill_name: "Python" }]
- * 3. Stringified JSON: "[\"React\", \"Node.js\"]"
+ * Hanya mengambil Nama dan Icon
  */
 function formatSkillList(
   skillsInput?: any,
@@ -66,23 +63,20 @@ function formatSkillList(
 
   let parsedSkills = skillsInput;
 
-  // Jika data dikirim sebagai JSON String dari DB, coba parse lebih dulu
   if (typeof skillsInput === "string") {
     try {
       parsedSkills = JSON.parse(skillsInput);
     } catch {
-      return [{ name: skillsInput, level: "Intermediate", icon: defaultIcon }];
+      return [{ name: skillsInput, icon: defaultIcon }];
     }
   }
 
-  // Pastikan bentuknya Array
   if (!Array.isArray(parsedSkills)) return [];
 
-  // Map tiap elemen ke format SkillItem
   return parsedSkills
     .map((item) => {
       if (typeof item === "string") {
-        return { name: item, level: "Intermediate", icon: defaultIcon };
+        return { name: item, icon: defaultIcon };
       }
 
       if (typeof item === "object" && item !== null) {
@@ -98,7 +92,6 @@ function formatSkillList(
 
         return {
           name: String(name),
-          level: item.level || item.skill_level || "Intermediate",
           icon: item.icon || defaultIcon,
         };
       }
@@ -126,10 +119,9 @@ async function getUserProfile(
     if (res.ok) {
       const result = await res.json();
 
-      // Ambil item pertama dari array response API
-      const data: ApiProfileResponse = Array.isArray(result)
-        ? result[0]
-        : result;
+      // Unnesting data dari format response [{ message, data }, { status }]
+      const firstItem = Array.isArray(result) ? result[0] : result;
+      const data: ApiProfileResponse = firstItem?.data || firstItem;
 
       if (data) {
         return {
@@ -173,7 +165,7 @@ async function getUserProfile(
     reviewsCount: 0,
     bioHeadline: "Tambahkan deskripsi singkat profil kamu.",
     aboutMe: "Tambahkan informasi lengkap tentang dirimu.",
-    avatar: "/king.png",
+    avatar: "/profile.jpg",
     isOnline: true,
     stats: {
       learningPartners: 0,
@@ -296,7 +288,7 @@ export default async function ProfilePage() {
               user.canHelpWith.map((item, index) => (
                 <div
                   key={`${item.name}-${index}`}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
+                  className="flex items-center p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">{item.icon}</span>
@@ -304,9 +296,6 @@ export default async function ProfilePage() {
                       {item.name}
                     </span>
                   </div>
-                  <span className="text-xs text-slate-500 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-100">
-                    {item.level}
-                  </span>
                 </div>
               ))
             ) : (
@@ -330,7 +319,7 @@ export default async function ProfilePage() {
               user.wantToLearn.map((item, index) => (
                 <div
                   key={`${item.name}-${index}`}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
+                  className="flex items-center p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">{item.icon}</span>
@@ -338,9 +327,6 @@ export default async function ProfilePage() {
                       {item.name}
                     </span>
                   </div>
-                  <span className="text-xs text-slate-500 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-100">
-                    {item.level}
-                  </span>
                 </div>
               ))
             ) : (
