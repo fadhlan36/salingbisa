@@ -5,7 +5,7 @@ import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-// Interface untuk data dari API
+// Interface untuk data Partner dari API
 interface PartnerApiResponse {
   id: string;
   avatar_url: string | null;
@@ -15,34 +15,30 @@ interface PartnerApiResponse {
   match: string; // "100%"
 }
 
-const skills = [
-  {
-    name: "UI Design",
-    amountPeople: 120,
-    icon: "🎨",
-  },
-  {
-    name: "JavaScript",
-    amountPeople: 250,
-    icon: "💻",
-  },
-  {
-    name: "Python",
-    amountPeople: 160,
-    icon: "🐍",
-  },
-  {
-    name: "Marketing",
-    amountPeople: 80,
-    icon: "📈",
-  },
-  {
-    name: "Sales",
-    amountPeople: 230,
-    icon: "💼",
-  },
-];
+// Interface untuk data Skill dari API
+interface SkillApiResponse {
+  id: string;
+  skill_name: string;
+  skillCount: number;
+}
 
+// Helper untuk mapping icon berdasarkan nama skill (opsional)
+const getSkillIcon = (name: string) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("design") || lower.includes("ui")) return "🎨";
+  if (
+    lower.includes("js") ||
+    lower.includes("javascript") ||
+    lower.includes("code")
+  )
+    return "💻";
+  if (lower.includes("python")) return "🐍";
+  if (lower.includes("market")) return "📈";
+  if (lower.includes("sale")) return "💼";
+  return "💡";
+};
+
+// Fetch Rekomendasi Partner
 async function getPartnerRecommendations(token: string) {
   try {
     const res = await fetch("http://localhost:3000/api/partner/recomendation", {
@@ -50,22 +46,19 @@ async function getPartnerRecommendations(token: string) {
         Authorization: `Bearer ${token}`,
         Cookie: `token=${token}`,
       },
-      cache: "no-store", // Selalu ambil data terbaru (Server-Side Rendering)
+      cache: "no-store",
     });
 
     if (!res.ok) {
-      console.error("Failed to fetch recommendations:", res.statusText);
+      console.error("Failed to fetch partner recommendations:", res.statusText);
       return [];
     }
 
     const data: PartnerApiResponse[] = await res.json();
 
-    // Mapping response API ke format yang diharapkan PartnerCard
     return data.map((item) => {
-      // Membersihkan string match dari karakter '%' jika PartnerCard butuh angka (misal: "100%" -> 100)
       const numericMatch = parseInt(item.match.replace("%", ""), 10) || 0;
 
-      // Ambil skill pertama atau fallback text jika array masih kosong
       const teachSkill =
         item.skill_teach.length > 0
           ? typeof item.skill_teach[0] === "string"
@@ -83,7 +76,7 @@ async function getPartnerRecommendations(token: string) {
       return {
         id: item.id,
         name: item.full_name,
-        avatar: item.avatar_url || "/king.png", // Fallback avatar jika null
+        avatar: item.avatar_url || "/king.png",
         match: numericMatch,
         teach: teachSkill,
         learn: learnSkill,
@@ -91,6 +84,36 @@ async function getPartnerRecommendations(token: string) {
     });
   } catch (error) {
     console.error("Error fetching partner recommendations:", error);
+    return [];
+  }
+}
+
+// Fetch Rekomendasi Skill
+async function getSkillRecommendations(token: string) {
+  try {
+    const res = await fetch("http://localhost:3000/api/skill/recomendation", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `token=${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      console.error("Failed to fetch skill recommendations:", res.statusText);
+      return [];
+    }
+
+    const data: SkillApiResponse[] = await res.json();
+
+    return data.map((item) => ({
+      id: item.id,
+      name: item.skill_name,
+      amountPeople: item.skillCount,
+      icon: getSkillIcon(item.skill_name),
+    }));
+  } catch (error) {
+    console.error("Error fetching skill recommendations:", error);
     return [];
   }
 }
@@ -109,8 +132,11 @@ export default async function Dashboard() {
     redirect("/auth/login");
   }
 
-  // Fetch data dari API Backend
-  const partners = await getPartnerRecommendations(token);
+  // Fetch kedua data secara parallel
+  const [partners, skills] = await Promise.all([
+    getPartnerRecommendations(token),
+    getSkillRecommendations(token),
+  ]);
 
   return (
     <section className="mx-auto max-w-7xl space-y-8 pt-20 pb-10 px-4 sm:px-6">
@@ -164,12 +190,21 @@ export default async function Dashboard() {
       <div className="flex flex-col gap-4">
         {/* Header */}
         <h3 className="text-xl font-semibold">Browse by Skills</h3>
-        {/* Skills */}
-        <HorizontalScroll>
-          {skills.map((skill) => (
-            <SkillCard key={skill.name} skill={skill} />
-          ))}
-        </HorizontalScroll>
+
+        {/* Skill Cards */}
+        <div className="flex flex-col gap-4">
+          {skills.length > 0 ? (
+            <HorizontalScroll>
+              {skills.map((skill) => (
+                <SkillCard key={skill.id || skill.name} skill={skill} />
+              ))}
+            </HorizontalScroll>
+          ) : (
+            <div className="rounded-xl border border-dashed p-8 text-center text-slate-500">
+              Belum ada rekomendasi skill yang tersedia.
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
