@@ -56,7 +56,7 @@ export async function GET(request: NextRequest, { params }: Props) {
   return NextResponse.json(
     {
       message: "Berhasil mengambil data profile",
-      data: { ...userData, teachSkill, learnSkill },
+      data: { ...userData, skill_teach: teachSkill, skill_learn: learnSkill },
     },
     {
       status: 200,

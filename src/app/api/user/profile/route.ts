@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
     message: "Berhasil mengambil data my profile",
     data: {
       ...userData,
-      teachSkill,
-      learnSkill,
+      skill_teach: teachSkill,
+      skill_learn: learnSkill,
     },
   };
 
