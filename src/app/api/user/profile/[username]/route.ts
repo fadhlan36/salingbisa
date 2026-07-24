@@ -1,4 +1,5 @@
 import { verifyToken } from "@/lib/auth";
+import { authenticate } from "@/lib/auth-helper";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -9,16 +10,10 @@ type Props = {
 };
 
 export async function GET(request: NextRequest, { params }: Props) {
-  const token = request.cookies.get("token")?.value;
+  const { error: authError } = authenticate(request);
 
-  if (!token) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    verifyToken(token);
-  } catch {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (authError) {
+    return authError;
   }
 
   const { username } = await params;
