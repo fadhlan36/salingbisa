@@ -1,11 +1,12 @@
+import { authenticate } from "@/lib/auth-helper";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
+  const { error: authError } = authenticate(request);
 
-  if (!token) {
-    return NextResponse.json({ messsage: "Unauthorized" }, { status: 401 });
+  if (authError) {
+    return authError;
   }
 
   const { data, error } = await supabaseAdmin.from("skills").select("id,name");

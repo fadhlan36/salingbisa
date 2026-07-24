@@ -1,30 +1,13 @@
 import { verifyToken } from "@/lib/auth";
+import { authenticate } from "@/lib/auth-helper";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
+  const { user, error: authError } = authenticate(request);
 
-  if (!token) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      {
-        status: 401,
-      },
-    );
-  }
-
-  let user;
-
-  try {
-    user = verifyToken(token);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      {
-        status: 401,
-      },
-    );
+  if (authError) {
+    return authError;
   }
 
   const { data, error } = await supabaseAdmin
