@@ -5,14 +5,16 @@ import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-// Interface untuk data Partner dari API
+// Interface fleksibel untuk data Partner dari API
 interface PartnerApiResponse {
   id: string;
   avatar_url: string | null;
   full_name: string;
-  skill_teach: { name: string }[] | string[];
-  skill_learn: { name: string }[] | string[];
-  match: string; // "100%"
+  teachSkill?: any;
+  skill_teach?: any;
+  learnSkill?: any;
+  skill_learn?: any;
+  match?: string; // "100%"
 }
 
 // Interface untuk data Skill dari API
@@ -20,6 +22,57 @@ interface SkillApiResponse {
   id: string;
   skill_name: string;
   skillCount: number;
+}
+
+// Helper untuk mengekstrak SEMUA nama skill menjadi Array of String []
+function parseSkillList(skillsInput: any): string[] {
+  if (!skillsInput) return [];
+
+  let parsedSkills = skillsInput;
+
+  // 1. Jika data berupa string JSON, parse dulu
+  if (typeof skillsInput === "string") {
+    try {
+      parsedSkills = JSON.parse(skillsInput);
+    } catch {
+      // Jika string murni bukan JSON
+      return skillsInput.trim() !== "" ? [skillsInput] : [];
+    }
+  }
+
+  // 2. Jika berbentuk Array
+  if (Array.isArray(parsedSkills)) {
+    return parsedSkills
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (typeof item === "object" && item !== null) {
+          return (
+            item.name ||
+            item.skill_name ||
+            item.title ||
+            item.name_skill ||
+            item.skill ||
+            ""
+          );
+        }
+        return "";
+      })
+      .filter((name) => Boolean(name && name.trim() !== ""));
+  }
+
+  // 3. Jika berbentuk Object tunggal (bukan array)
+  if (typeof parsedSkills === "object" && parsedSkills !== null) {
+    const name =
+      parsedSkills.name ||
+      parsedSkills.skill_name ||
+      parsedSkills.title ||
+      parsedSkills.name_skill ||
+      parsedSkills.skill ||
+      "";
+    return name ? [String(name)] : [];
+  }
+
+  return [];
 }
 
 // Helper untuk mapping icon berdasarkan nama skill (opsional)
@@ -57,29 +110,20 @@ async function getPartnerRecommendations(token: string) {
     const data: PartnerApiResponse[] = await res.json();
 
     return data.map((item) => {
-      const numericMatch = parseInt(item.match.replace("%", ""), 10) || 0;
+      const numericMatch =
+        parseInt(item.match?.replace("%", "") || "0", 10) || 0;
 
-      const teachSkill =
-        item.skill_teach.length > 0
-          ? typeof item.skill_teach[0] === "string"
-            ? item.skill_teach[0]
-            : item.skill_teach[0].name
-          : "Not specified";
-
-      const learnSkill =
-        item.skill_learn.length > 0
-          ? typeof item.skill_learn[0] === "string"
-            ? item.skill_learn[0]
-            : item.skill_learn[0].name
-          : "Not specified";
+      // Mendapatkan array berisi semua skill (misal: ["Laravel", "UI/UX", "React"])
+      const teachSkills = parseSkillList(item.teachSkill || item.skill_teach);
+      const learnSkills = parseSkillList(item.learnSkill || item.skill_learn);
 
       return {
         id: item.id,
         name: item.full_name,
         avatar: item.avatar_url || "/profile.jpg",
         match: numericMatch,
-        teach: teachSkill,
-        learn: learnSkill,
+        teach: teachSkills, // Mengembalikan string[]
+        learn: learnSkills, // Mengembalikan string[]
       };
     });
   } catch (error) {
@@ -106,7 +150,12 @@ async function getSkillRecommendations(token: string) {
 
     const data: SkillApiResponse[] = await res.json();
 
-    return data.map((item) => ({
+    // Saring data agar tidak ada ID skill yang sama (Mencegah Duplicate Key Error)
+    const uniqueSkills = data.filter(
+      (item, index, self) => self.findIndex((s) => s.id === item.id) === index,
+    );
+
+    return uniqueSkills.map((item) => ({
       id: item.id,
       name: item.skill_name,
       amountPeople: item.skillCount,
@@ -150,7 +199,7 @@ export default async function Dashboard() {
         </p>
       </div>
 
-      {/* Rekomendation Match */}
+      {/* Recommendation Match */}
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -195,8 +244,8 @@ export default async function Dashboard() {
         <div className="flex flex-col gap-4">
           {skills.length > 0 ? (
             <HorizontalScroll>
-              {skills.map((skill) => (
-                <SkillCard key={skill.id || skill.name} skill={skill} />
+              {skills.map((skill, index) => (
+                <SkillCard key={`${skill.id}-${index}`} skill={skill} />
               ))}
             </HorizontalScroll>
           ) : (
