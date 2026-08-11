@@ -13,12 +13,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const matches = await getMathces(user!.userId);
-    const response = {
-      id: matches.id,
-      username: matches.username,
-      full_name: matches.full_name,
-      avatar_url: matches.avatar_url,
-    };
+
+    const response = matches.map((match: any) => ({
+      id: match.match_id,
+      partner: {
+        id: match.partner_id,
+        username: match.username,
+        full_name: match.full_name,
+        avatar_url: match.avatar_url,
+      },
+      status: match.status,
+    }));
 
     return NextResponse.json(
       {

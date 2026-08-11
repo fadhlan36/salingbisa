@@ -10,22 +10,9 @@ export async function getMathces(userId: string) {
     throw new Error(error.message);
   }
 
-  return data;
+  console.log("RPC DATA:", JSON.stringify(data, null, 2));
+  console.log("RPC TYPE:", typeof data);
+  console.log("IS ARRAY:", Array.isArray(data));
 
-  try {
-    return NextResponse.json(
-      {
-        message: "Berhasil mengambil data matches",
-        data,
-      },
-      { status: 200 },
-    );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        message: error.message ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
-  }
+  return data;
 }
