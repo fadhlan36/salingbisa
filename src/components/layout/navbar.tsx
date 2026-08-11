@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bell, Menu, Search, SlidersHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -14,40 +14,130 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ProfileDropDown } from "../common/profile-dropdown";
 import { useSidebar } from "./sidebar-context";
+
+// Fallback jika API belum/gagal mengembalikan data
+const DEFAULT_SKILL_OPTIONS = [
+  "React",
+  "Next.js",
+  "TypeScript",
+  "Python",
+  "UI/UX Design",
+  "Node.js",
+  "Tailwind CSS",
+  "Machine Learning",
+];
+
+const LOCATION_OPTIONS = [
+  "Jakarta",
+  "Bandung",
+  "Surabaya",
+  "Yogyakarta",
+  "Bali",
+  "Remote",
+];
 
 export default function Navbar() {
   const { toggle } = useSidebar();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [searchValue, setSearchValue] = useState("");
+  // Ambil state awal dari URL Search Params
+  const initialSearch = searchParams.get("search") || "";
+  const initialTeach = searchParams.get("teach") || "";
+  const initialLearn = searchParams.get("learn") || "";
+  const initialLocation = searchParams.get("location") || "";
+
+  const [searchValue, setSearchValue] = useState(initialSearch);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [teach, setTeach] = useState("");
-  const [learn, setLearn] = useState("");
-  const [location, setLocation] = useState("");
+  const [teach, setTeach] = useState(initialTeach);
+  const [learn, setLearn] = useState(initialLearn);
+  const [location, setLocation] = useState(initialLocation);
 
-  const buildParams = () => {
+  // State untuk menyimpan opsi skill dinamis dari API
+  const [skillOptions, setSkillOptions] = useState<string[]>(
+    DEFAULT_SKILL_OPTIONS,
+  );
+
+  const isInitialMount = useRef(true);
+
+  // Fetch daftar skill dari API (sama seperti di halaman Dashboard)
+  useEffect(() => {
+    async function fetchSkills() {
+      try {
+        const res = await fetch("/api/skill/recomendation");
+        if (res.ok) {
+          const data = await res.json();
+          const extractedNames: string[] = data
+            .map(
+              (item: { skill_name?: string; name?: string }) =>
+                item.skill_name || item.name,
+            )
+            .filter((name: string | undefined): name is string =>
+              Boolean(name && name.trim() !== ""),
+            );
+
+          // Gunakan generic type pada Set & Array.from agar tidak dianggap unknown[]
+          const uniqueSkills: string[] = Array.from(
+            new Set<string>(extractedNames),
+          );
+
+          if (uniqueSkills.length > 0) {
+            setSkillOptions(uniqueSkills);
+          }
+        }
+      } catch (error) {
+        console.error("Gagal mengambil daftar skill untuk filter:", error);
+      }
+    }
+
+    fetchSkills();
+  }, []);
+
+  // Sync state dengan URL Params jika URL berubah
+  useEffect(() => {
+    setSearchValue(searchParams.get("search") || "");
+    setTeach(searchParams.get("teach") || "");
+    setLearn(searchParams.get("learn") || "");
+    setLocation(searchParams.get("location") || "");
+  }, [searchParams]);
+
+  const buildParams = (searchQuery: string) => {
     const params = new URLSearchParams();
-    if (searchValue.trim()) params.set("search", searchValue.trim());
-    if (teach.trim()) params.set("teach", teach.trim());
-    if (learn.trim()) params.set("learn", learn.trim());
-    if (location.trim()) params.set("location", location.trim());
+    if (searchQuery.trim()) params.set("search", searchQuery.trim());
+    if (teach) params.set("teach", teach);
+    if (learn) params.set("learn", learn);
+    if (location) params.set("location", location);
     return params;
   };
 
-  const goToSearch = () => {
-    const params = buildParams();
-    router.push(`/dashboard/search?${params.toString()}`);
+  const goToSearch = (customSearch = searchValue) => {
+    const params = buildParams(customSearch);
+    const queryString = params.toString();
+    const targetUrl = queryString
+      ? `/dashboard/search?${queryString}`
+      : `/dashboard/search`;
+
+    router.push(targetUrl);
   };
 
-  // Debounce: redirect otomatis 400ms setelah user berhenti mengetik
+  // Debounce search input saat pengetikan
   useEffect(() => {
-    // Jangan redirect kalau semua field masih kosong (misal pas awal load)
-    if (!searchValue.trim() && !teach && !learn && !location) return;
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
 
     const timeout = setTimeout(() => {
-      goToSearch();
+      goToSearch(searchValue);
     }, 400);
 
     return () => clearTimeout(timeout);
@@ -55,8 +145,14 @@ export default function Navbar() {
   }, [searchValue]);
 
   const applyFilter = () => {
-    goToSearch();
+    goToSearch(searchValue);
     setFilterOpen(false);
+  };
+
+  const handleResetFilter = () => {
+    setTeach("");
+    setLearn("");
+    setLocation("");
   };
 
   return (
@@ -82,15 +178,15 @@ export default function Navbar() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    goToSearch();
+                    goToSearch(searchValue);
                   }
                 }}
-                placeholder="Search skills or username"
+                placeholder="Cari keahlian atau nama pengguna..."
                 className="pl-10"
               />
             </div>
 
-            {/* Filter — teks di desktop, icon aja di mobile */}
+            {/* Filter Buttons */}
             <Button
               variant="outline"
               className="hidden sm:inline-flex"
@@ -110,7 +206,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Right */}
+        {/* Right Menu */}
         <div className="ml-3 flex shrink-0 items-center gap-3 sm:ml-8 sm:gap-5">
           <Button
             variant="ghost"
@@ -131,38 +227,67 @@ export default function Navbar() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* Dropdown Skill yang Diajarkan */}
             <div className="space-y-2">
               <Label htmlFor="teach">Skill yang diajarkan</Label>
-              <Input
-                id="teach"
-                placeholder="misal: React"
-                value={teach}
-                onChange={(e) => setTeach(e.target.value)}
-              />
+              <Select value={teach} onValueChange={setTeach}>
+                <SelectTrigger id="teach">
+                  <SelectValue placeholder="Pilih skill yang diajarkan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {skillOptions.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Dropdown Skill yang Ingin Dipelajari */}
             <div className="space-y-2">
               <Label htmlFor="learn">Skill yang ingin dipelajari</Label>
-              <Input
-                id="learn"
-                placeholder="misal: UI/UX"
-                value={learn}
-                onChange={(e) => setLearn(e.target.value)}
-              />
+              <Select value={learn} onValueChange={setLearn}>
+                <SelectTrigger id="learn">
+                  <SelectValue placeholder="Pilih skill yang dipelajari" />
+                </SelectTrigger>
+                <SelectContent>
+                  {skillOptions.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Dropdown Lokasi */}
             <div className="space-y-2">
               <Label htmlFor="location">Lokasi</Label>
-              <Input
-                id="location"
-                placeholder="misal: Jakarta"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
+              <Select value={location} onValueChange={setLocation}>
+                <SelectTrigger id="location">
+                  <SelectValue placeholder="Pilih lokasi" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOCATION_OPTIONS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleResetFilter}
+              className="mr-auto text-muted-foreground hover:text-foreground"
+            >
+              Reset
+            </Button>
             <Button variant="outline" onClick={() => setFilterOpen(false)}>
               Batal
             </Button>
