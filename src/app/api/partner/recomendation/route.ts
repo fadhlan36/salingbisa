@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 type PartnerRecommendation = {
   id: string;
   full_name: string;
+  username: string;
   avatar_url: string | null;
   teach: string[];
   learn: string[];
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
       id: partner.id,
       avatar_url: partner.avatar_url,
       full_name: partner.full_name,
+      username: partner.username,
       teachSkill: partner.teach,
       learnSkill: partner.learn,
       match: "100%", // TODO: calculate match percentage
