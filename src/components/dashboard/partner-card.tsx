@@ -1,5 +1,4 @@
-// src/components/dashboard/partner-card.tsx
-
+import Link from "next/link";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -8,10 +7,12 @@ type PartnerCardProps = {
   partner: {
     id?: string;
     name: string;
+    username: string;
     avatar: string;
     match: number;
     teach: string[];
     learn: string[];
+    isMatched?: boolean;
   };
 };
 
@@ -58,6 +59,10 @@ export default function PartnerCard({ partner }: PartnerCardProps) {
     );
   };
 
+  const profileUrl = `/dashboard/profile/${partner.username}${
+    partner.isMatched ? "?isMatched=true" : ""
+  }`;
+
   return (
     <Card className="relative w-60 sm:w-64 shrink-0 rounded-2xl p-5 shadow-sm border bg-card flex flex-col justify-between hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
       {/* Top Header: Badge Match */}
@@ -79,7 +84,7 @@ export default function PartnerCard({ partner }: PartnerCardProps) {
         </h2>
       </div>
 
-      {/* Skills Section (Tanpa Sub-Card Outer Box) */}
+      {/* Skills Section */}
       <div className="space-y-3 my-2">
         {/* Can Teach */}
         <div>
@@ -112,12 +117,13 @@ export default function PartnerCard({ partner }: PartnerCardProps) {
         </div>
       </div>
 
-      {/* Action Button */}
+      {/* Redirect ke halaman profile pengguna berdasarkan username */}
       <Button
+        asChild
         variant="default"
         className="w-full mt-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-2 shadow-sm shadow-indigo-200 dark:shadow-none transition-all"
       >
-        View Profile
+        <Link href={profileUrl}>View Profile</Link>
       </Button>
     </Card>
   );

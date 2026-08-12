@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   MapPin,
@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   MessageSquare,
   RefreshCw,
+  UserPlus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ interface UserProfile {
   aboutMe: string;
   avatar: string;
   isOnline: boolean;
-  isMatched: boolean; // Field status match
+  isMatched: boolean;
   stats: {
     learningPartners: number;
     successfulSessions: number;
@@ -96,8 +97,12 @@ export default function PartnerProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const resolvedParams = use(params);
-  const username = resolvedParams.username;
+  const rawUsername = resolvedParams.username;
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Cek query parameter ?isMatched=true
+  const isMatchedFromQuery = searchParams.get("isMatched") === "true";
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,7 +112,9 @@ export default function PartnerProfilePage({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/user/profile/${username}`);
+      const cleanUsername = decodeURIComponent(rawUsername).replace(/^@/, "");
+      const res = await fetch(`/api/user/profile/${cleanUsername}`);
+
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error("User profile not found.");
@@ -123,9 +130,17 @@ export default function PartnerProfilePage({
         throw new Error("User data is empty.");
       }
 
+      // PERBAIKAN: Gunakan OR (||) dan Boolean cast agar `false` tidak menghentikan evaluasi
+      const apiMatchedStatus =
+        Boolean(data.is_matched) ||
+        Boolean(data.isMatched) ||
+        Boolean(data.is_partner) ||
+        Boolean(data.isPartner) ||
+        data.status === "matched";
+
       const formattedProfile: UserProfile = {
         id: data.id || "",
-        name: data.full_name || "User",
+        name: data.full_name || data.name || "User",
         email: data.email || "",
         username: data.username
           ? `@${data.username.replace(/^@/, "")}`
@@ -135,9 +150,9 @@ export default function PartnerProfilePage({
         reviewsCount: data.reviews_count ?? 0,
         bioHeadline: data.bio || "Belum ada bio singkat.",
         aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
-        avatar: data.avatar_url || "/profile.jpg",
+        avatar: data.avatar_url || data.avatar || "/profile.jpg",
         isOnline: data.is_online ?? true,
-        isMatched: data.is_matched ?? data.isMatched ?? false, // Parsing status match dari API
+        isMatched: isMatchedFromQuery || apiMatchedStatus,
         stats: {
           learningPartners: data.stats?.learning_partners ?? 0,
           successfulSessions: data.stats?.successful_sessions ?? 0,
@@ -159,14 +174,14 @@ export default function PartnerProfilePage({
   };
 
   useEffect(() => {
-    if (username) {
+    if (rawUsername) {
       fetchProfile();
     }
-  }, [username]);
+  }, [rawUsername]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 text-slate-800">
-      {/* 1. Back Button */}
+      {/* Back Button */}
       <div>
         <button
           type="button"
@@ -178,11 +193,11 @@ export default function PartnerProfilePage({
         </button>
       </div>
 
-      {/* Loading State Skeleton */}
+      {/* Loading Skeleton */}
       {loading && (
         <div className="animate-pulse space-y-6">
           <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="h-32 w-32 rounded-full bg-slate-200" />
+            <div className="h-32 w-32 rounded-full bg-slate-200 shrink-0" />
             <div className="space-y-3 flex-1 text-center sm:text-left">
               <div className="h-7 w-48 bg-slate-200 rounded mx-auto sm:mx-0" />
               <div className="h-4 w-32 bg-slate-200 rounded mx-auto sm:mx-0" />
@@ -213,13 +228,12 @@ export default function PartnerProfilePage({
         </div>
       )}
 
-      {/* 2. Top Profile Section */}
+      {/* Profile Section */}
       {!loading && !error && user && (
         <>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-              {/* Avatar with Online Badge */}
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 flex-1">
+              <div className="relative shrink-0">
                 <div className="h-32 w-32 rounded-full overflow-hidden border bg-slate-100">
                   <img
                     src={user.avatar}
@@ -234,7 +248,6 @@ export default function PartnerProfilePage({
                 )}
               </div>
 
-              {/* User Info */}
               <div className="space-y-2 text-center sm:text-left max-w-lg">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   {user.name}
@@ -265,30 +278,34 @@ export default function PartnerProfilePage({
               </div>
             </div>
 
-            {/* Send Message Button (Hanya tampil jika user.isMatched === true) */}
-            {user.isMatched && (
-              <div className="flex justify-center md:justify-end">
+            {/* Action Button: Send Message vs Request Match */}
+            <div className="w-full md:w-auto shrink-0 flex justify-center md:justify-end pt-2 md:pt-0">
+              {user.isMatched ? (
                 <Link
                   href={`/dashboard/messages?userId=${user.id}`}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto"
                 >
                   <MessageSquare className="h-4 w-4" />
                   Send Message
                 </Link>
-              </div>
-            )}
+              ) : (
+                <Button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-full sm:w-auto"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Request Match
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* 3. Middle Cards Section (3 Column Grid) */}
+          {/* Skill Cards & Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* I Can Help With Card */}
             <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-bold text-slate-900 text-base">
-                  I Can Help With
-                </h2>
-              </div>
-
+              <h2 className="font-bold text-slate-900 text-base">
+                I Can Help With
+              </h2>
               <div className="space-y-2.5">
                 {user.canHelpWith.length > 0 ? (
                   user.canHelpWith.map((item, index) => (
@@ -312,14 +329,10 @@ export default function PartnerProfilePage({
               </div>
             </div>
 
-            {/* I Want to Learn Card */}
             <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-bold text-slate-900 text-base">
-                  I Want to Learn
-                </h2>
-              </div>
-
+              <h2 className="font-bold text-slate-900 text-base">
+                I Want to Learn
+              </h2>
               <div className="space-y-2.5">
                 {user.wantToLearn.length > 0 ? (
                   user.wantToLearn.map((item, index) => (
@@ -343,7 +356,6 @@ export default function PartnerProfilePage({
               </div>
             </div>
 
-            {/* Stats Card */}
             <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm flex flex-col justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600">
@@ -389,7 +401,6 @@ export default function PartnerProfilePage({
             </div>
           </div>
 
-          {/* 4. About Me Section */}
           <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-3">
             <h2 className="font-bold text-slate-900 text-base">About Me</h2>
             <p className="text-sm text-slate-600 leading-relaxed">

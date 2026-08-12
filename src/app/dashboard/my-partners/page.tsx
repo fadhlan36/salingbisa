@@ -33,11 +33,8 @@ export default function MyPartnersPage() {
       }
 
       const json = await res.json();
-      console.log("API Response:", json);
 
-      // Ekstraksi array data dari response backend
       let rawItems: any[] = [];
-
       if (Array.isArray(json) && json.length > 0 && json[0]?.data) {
         rawItems = json[0].data;
       } else if (json?.data && Array.isArray(json.data)) {
@@ -46,11 +43,13 @@ export default function MyPartnersPage() {
         rawItems = json;
       }
 
-      // Membaca objek `partner` di dalam setiap item data
       const normalizedPartners: Partner[] = rawItems
         .filter((item) => item && (item.partner || item.id))
         .map((item: any, index: number) => {
           const partnerData = item.partner || item;
+
+          const rawUser =
+            partnerData.username || partnerData.user_name || "unknown";
 
           return {
             id: String(
@@ -59,8 +58,7 @@ export default function MyPartnersPage() {
                 item.id ||
                 `partner-${index}`,
             ),
-            username:
-              partnerData.username || partnerData.user_name || "unknown",
+            username: String(rawUser).replace(/^@/, ""),
             full_name:
               partnerData.full_name ||
               partnerData.fullName ||
@@ -121,7 +119,6 @@ export default function MyPartnersPage() {
           </p>
         </div>
 
-        {/* Search Input */}
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -198,7 +195,7 @@ export default function MyPartnersPage() {
         </Card>
       )}
 
-      {/* Partner Vertical List */}
+      {/* Partner List */}
       {!loading && !error && filteredPartners.length > 0 && (
         <div className="flex flex-col gap-3">
           {filteredPartners.map((partner, index) => (
@@ -207,7 +204,6 @@ export default function MyPartnersPage() {
               className="transition-all duration-200 hover:border-blue-200 hover:shadow-sm"
             >
               <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                {/* User Info (Left side) */}
                 <div className="flex items-center space-x-4">
                   <Avatar className="h-12 w-12 border border-blue-100">
                     <AvatarImage
@@ -228,7 +224,6 @@ export default function MyPartnersPage() {
                   </div>
                 </div>
 
-                {/* Action Buttons (Right side) */}
                 <div className="flex w-full items-center gap-2 border-t border-gray-100 pt-2 sm:w-auto sm:border-t-0 sm:pt-0">
                   <Button
                     asChild
@@ -246,7 +241,10 @@ export default function MyPartnersPage() {
                     size="sm"
                     className="h-9 flex-1 gap-2 px-4 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 sm:flex-none"
                   >
-                    <Link href={`/dashboard/profile/${partner.username}`}>
+                    {/* Mengirimkan query param isMatched=true ke halaman profile */}
+                    <Link
+                      href={`/dashboard/profile/${partner.username}?isMatched=true`}
+                    >
                       <User className="h-4 w-4" />
                       Profile
                     </Link>
