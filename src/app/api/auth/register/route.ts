@@ -37,7 +37,12 @@ export async function POST(request: NextRequest) {
 
   const { data: newUser, error } = await supabaseAdmin
     .from("users")
-    .insert({ email, password_hash: passwordHash, full_name: fullName })
+    .insert({
+      email,
+      password_hash: passwordHash,
+      full_name: fullName,
+      username: fullName,
+    })
     .select("id, email, full_name")
     .single();
 
@@ -46,7 +51,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Gagal membuat user" }, { status: 500 });
   }
 
-  const token = signToken({ userId: newUser.id, email: newUser.email, full_name: newUser.full_name });
+  const token = signToken({
+    userId: newUser.id,
+    email: newUser.email,
+    full_name: newUser.full_name,
+  });
 
   const response = NextResponse.json({ user: newUser });
   response.cookies.set("token", token, {
