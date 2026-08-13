@@ -16,30 +16,43 @@ type SkillMatch = {
   learn: string[];
 };
 
-const calculateMatch = (
+type CurrentUserSkillData = {
+  type: "teach" | "learn";
+  skill: {
+    name: string;
+  };
+};
+
+export function calculateMatch(
   currentUser: SkillMatch,
   partner: SkillMatch,
-): string => {
-  const learnMatch = currentUser.learn.filter((skill) =>
+): string {
+  // Apa yang ingin dipelajari user dan bisa diajarkan partner
+  const learningMatches = currentUser.learn.filter((skill) =>
     partner.teach.includes(skill),
   );
 
-  const teachMatch = currentUser.teach.filter((skill) =>
-    partner.learn.includes(skill),
+  // Apa yang ingin dipelajari partner dan bisa diajarkan user
+  const teachingMatches = partner.learn.filter((skill) =>
+    currentUser.teach.includes(skill),
   );
 
-  const totalSkill = currentUser.learn.length + currentUser.teach.length;
+  const learningScore =
+    currentUser.learn.length > 0
+      ? learningMatches.length / currentUser.learn.length
+      : 0;
 
-  if (totalSkill === 0) {
-    return "0%";
-  }
+  const teachingScore =
+    partner.learn.length > 0
+      ? teachingMatches.length / partner.learn.length
+      : 0;
 
-  const matchedSkill = learnMatch.length + teachMatch.length;
+  const matchPercentage = Math.round(
+    ((learningScore + teachingScore) / 2) * 100,
+  );
 
-  const percentage = Math.round((matchedSkill / totalSkill) * 100);
-
-  return `${percentage}%`;
-};
+  return `${matchPercentage}%`;
+}
 
 export async function GET(request: NextRequest) {
   const { user, error: authError } = authenticate(request);
@@ -48,7 +61,9 @@ export async function GET(request: NextRequest) {
     return authError;
   }
 
-  const { data, error } = await supabaseAdmin.rpc("partner_recommendation");
+  const { data, error } = await supabaseAdmin.rpc("partner_recommendation", {
+    p_user_id: user!.userId,
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -74,16 +89,17 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const currentUserSkill = {
-    teach: currentUserSkillsData
-      .filter((skill) => skill.type === "teach")
-      .map((skill) => skill.skill[0]?.name)
-      .filter((name): name is string => Boolean(name)),
+  const currentUserSkillData =
+    currentUserSkillsData as unknown as CurrentUserSkillData[];
 
-    learn: currentUserSkillsData
+  const currentUserSkill = {
+    teach: currentUserSkillData
+      .filter((skill) => skill.type === "teach")
+      .map((skill) => skill.skill.name),
+
+    learn: currentUserSkillData
       .filter((skill) => skill.type === "learn")
-      .map((skill) => skill.skill[0]?.name)
-      .filter((name): name is string => Boolean(name)),
+      .map((skill) => skill.skill.name),
   };
 
   const response = (data as PartnerRecommendation[])
