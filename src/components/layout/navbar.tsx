@@ -24,7 +24,6 @@ import {
 import { ProfileDropDown } from "../common/profile-dropdown";
 import { useSidebar } from "./sidebar-context";
 
-// Fallback jika API belum/gagal mengembalikan data
 const DEFAULT_SKILL_OPTIONS = [
   "React",
   "Next.js",
@@ -50,7 +49,6 @@ export default function Navbar() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Ambil state awal dari URL Search Params
   const initialSearch = searchParams.get("search") || "";
   const initialTeach = searchParams.get("teach") || "";
   const initialLearn = searchParams.get("learn") || "";
@@ -62,14 +60,14 @@ export default function Navbar() {
   const [learn, setLearn] = useState(initialLearn);
   const [location, setLocation] = useState(initialLocation);
 
-  // State untuk menyimpan opsi skill dinamis dari API
   const [skillOptions, setSkillOptions] = useState<string[]>(
     DEFAULT_SKILL_OPTIONS,
   );
 
-  const isInitialMount = useRef(true);
+  // Ref untuk menampung timer debounce
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch daftar skill dari API (sama seperti di halaman Dashboard)
+  // Fetch daftar skill dari API
   useEffect(() => {
     async function fetchSkills() {
       try {
@@ -85,7 +83,6 @@ export default function Navbar() {
               Boolean(name && name.trim() !== ""),
             );
 
-          // Gunakan generic type pada Set & Array.from agar tidak dianggap unknown[]
           const uniqueSkills: string[] = Array.from(
             new Set<string>(extractedNames),
           );
@@ -102,13 +99,22 @@ export default function Navbar() {
     fetchSkills();
   }, []);
 
-  // Sync state dengan URL Params jika URL berubah
+  // Sync state dengan URL Params jika URL berubah (Navigasi luar)
   useEffect(() => {
     setSearchValue(searchParams.get("search") || "");
     setTeach(searchParams.get("teach") || "");
     setLearn(searchParams.get("learn") || "");
     setLocation(searchParams.get("location") || "");
   }, [searchParams]);
+
+  // Cleanup timer saat unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const buildParams = (searchQuery: string) => {
     const params = new URLSearchParams();
@@ -129,20 +135,20 @@ export default function Navbar() {
     router.push(targetUrl);
   };
 
-  // Debounce search input saat pengetikan
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
+  // Handler pengetikan manual pengguna + Debounce
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+
+    // Hapus timer lama jika pengguna masih mengetik
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
 
-    const timeout = setTimeout(() => {
-      goToSearch(searchValue);
+    // Buat timer baru untuk debounce
+    debounceTimerRef.current = setTimeout(() => {
+      goToSearch(value);
     }, 400);
-
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchValue]);
+  };
 
   const applyFilter = () => {
     goToSearch(searchValue);
@@ -174,10 +180,14 @@ export default function Navbar() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
+                    // Jika tekan Enter, batalkan timer debounce lalu langsung jalankan search
+                    if (debounceTimerRef.current) {
+                      clearTimeout(debounceTimerRef.current);
+                    }
                     goToSearch(searchValue);
                   }
                 }}
@@ -227,7 +237,6 @@ export default function Navbar() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Dropdown Skill yang Diajarkan */}
             <div className="space-y-2">
               <Label htmlFor="teach">Skill yang diajarkan</Label>
               <Select value={teach} onValueChange={setTeach}>
@@ -244,7 +253,6 @@ export default function Navbar() {
               </Select>
             </div>
 
-            {/* Dropdown Skill yang Ingin Dipelajari */}
             <div className="space-y-2">
               <Label htmlFor="learn">Skill yang ingin dipelajari</Label>
               <Select value={learn} onValueChange={setLearn}>
@@ -261,7 +269,6 @@ export default function Navbar() {
               </Select>
             </div>
 
-            {/* Dropdown Lokasi */}
             <div className="space-y-2">
               <Label htmlFor="location">Lokasi</Label>
               <Select value={location} onValueChange={setLocation}>
