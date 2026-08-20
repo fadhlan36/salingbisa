@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useBadgeCount } from "@/app/hooks/useBadgeCount";
 
 interface PendingRequest {
   matchId: string; // ID dari transaksi match (untuk Accept/Reject)
@@ -21,6 +22,7 @@ export default function PendingRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const { mutate } = useBadgeCount();
 
   const acceptRequest = async (matchId: string) => {
     try {
@@ -42,6 +44,7 @@ export default function PendingRequestsPage() {
       setRequests((prev) =>
         prev.filter((request) => request.matchId !== matchId),
       );
+      mutate();
     } catch (error) {
       console.error("Error accepting match:", error);
     }
@@ -64,6 +67,7 @@ export default function PendingRequestsPage() {
       setRequests((prev) =>
         prev.filter((request) => request.matchId !== matchId),
       );
+      mutate();
     } catch (error) {
       console.error("Error accepting match:", error);
     }

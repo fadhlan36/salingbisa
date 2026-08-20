@@ -15,13 +15,14 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
+import { useBadgeCount } from "@/app/hooks/useBadgeCount";
 
 const menus = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Explore", href: "/explore", icon: Search },
   { name: "My Partners", href: "/dashboard/my-partners", icon: Users },
   { name: "Messages", href: "/messages", icon: MessageSquare },
-  { name: "Notifications", href: "/notifications", icon: Bell },
+  { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { name: "Profile", href: "/dashboard/profile", icon: User }, //
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -29,6 +30,7 @@ const menus = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
+  const { count } = useBadgeCount();
 
   return (
     <>
@@ -86,9 +88,9 @@ export default function Sidebar() {
               >
                 <Icon className="h-5 w-5" />
                 <span>{menu.name}</span>
-                {menu.name === "Notifications" && (
+                {menu.name === "Notifications" && count > 0 && (
                   <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-xs text-white">
-                    3
+                    {count}
                   </span>
                 )}
               </Link>
