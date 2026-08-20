@@ -49,7 +49,51 @@ export async function PATCH(request: NextRequest, { params }: Props) {
   }
 
   const response = {
-    message: "Success update data matches",
+    message: "Success accept match",
+    data: {
+      id: data.id,
+      status: data.status,
+    },
+  };
+
+  return NextResponse.json(response, { status: 200 });
+}
+
+export async function DELETE(request: NextRequest, { params }: Props) {
+  const { user, error } = authenticate(request);
+
+  if (error) {
+    return error;
+  }
+
+  const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json({ message: "Id not valid" }, { status: 400 });
+  }
+
+  const { data, error: errorSupabase } = await supabaseAdmin
+    .from("matches")
+    .delete()
+    .eq("id", id)
+    .eq("user_b_id", user!.userId)
+    .eq("status", "pending")
+    .select("id, status")
+    .single();
+
+  if (errorSupabase) {
+    return NextResponse.json(
+      {
+        message: errorSupabase
+          ? errorSupabase.message
+          : "Internal server error",
+      },
+      { status: 400 },
+    );
+  }
+
+  const response = {
+    message: "Success reject match",
     data: {
       id: data.id,
       status: data.status,
