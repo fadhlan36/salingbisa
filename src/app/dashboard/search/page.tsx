@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import PartnerCard from "@/components/dashboard/partner-card";
 
 interface PartnerSearchResult {
@@ -18,21 +18,29 @@ interface SearchApiResponse {
   status: number;
 }
 
+// Helper untuk membangun base URL absolut dari header request saat ini.
+// Diperlukan karena Server Component tidak bisa fetch dengan relative URL,
+// dan hardcode localhost akan gagal saat production (Vercel).
+async function getBaseUrl() {
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = host?.includes("localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
+}
+
 async function searchPartners(
   query: URLSearchParams,
   token: string,
 ): Promise<SearchApiResponse> {
   try {
-    const res = await fetch(
-      `http://localhost:3000/api/partner?${query.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Cookie: `token=${token}`,
-        },
-        cache: "no-store",
+    const baseUrl = await getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/partner?${query.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `token=${token}`,
       },
-    );
+      cache: "no-store",
+    });
 
     if (!res.ok) {
       console.error("Failed to fetch search results:", res.statusText);

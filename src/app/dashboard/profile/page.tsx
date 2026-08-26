@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { verifyToken } from "@/lib/auth";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArrowLeft, MapPin, Star, Users, CheckCircle2 } from "lucide-react";
 import EditProfileModal from "@/components/profile/edit-profile-modal";
@@ -49,6 +49,16 @@ interface UserProfile {
   };
   canHelpWith: SkillItem[];
   wantToLearn: SkillItem[];
+}
+
+// Helper untuk membangun base URL absolut dari header request saat ini.
+// Diperlukan karena Server Component tidak bisa fetch dengan relative URL,
+// dan hardcode localhost akan gagal saat production (Vercel).
+async function getBaseUrl() {
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = host?.includes("localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
 }
 
 /**
@@ -108,7 +118,8 @@ async function getUserProfile(
   payload: any,
 ): Promise<UserProfile> {
   try {
-    const res = await fetch("http://localhost:3000/api/user/profile", {
+    const baseUrl = await getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/user/profile`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Cookie: `token=${token}`,
