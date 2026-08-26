@@ -2,7 +2,7 @@ import HorizontalScroll from "@/components/common/horizontal-scroll";
 import PartnerCard from "@/components/dashboard/partner-card";
 import SkillCard from "@/components/dashboard/skill-card";
 import { verifyToken } from "@/lib/auth";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 // Interface untuk Response API Partner (/api/partner/recomendation)
@@ -40,6 +40,16 @@ export interface SkillItem {
   name: string;
   amountPeople: number;
   icon: string;
+}
+
+// Helper untuk membangun base URL absolut dari header request saat ini.
+// Diperlukan karena Server Component tidak bisa fetch dengan relative URL,
+// dan hardcode localhost akan gagal saat production (Vercel).
+async function getBaseUrl() {
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = host?.includes("localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
 }
 
 // Helper rekursif untuk mendeteksi nama skill pada objek bersarang (nested)
@@ -114,7 +124,8 @@ async function getPartnerRecommendations(
   token: string,
 ): Promise<PartnerItem[]> {
   try {
-    const res = await fetch("http://localhost:3000/api/partner/recomendation", {
+    const baseUrl = await getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/partner/recomendation`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Cookie: `token=${token}`,
@@ -168,7 +179,8 @@ async function getPartnerRecommendations(
 // Fetch Rekomendasi Skill
 async function getSkillRecommendations(token: string): Promise<SkillItem[]> {
   try {
-    const res = await fetch("http://localhost:3000/api/skill/recomendation", {
+    const baseUrl = await getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/skill/recomendation`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Cookie: `token=${token}`,
