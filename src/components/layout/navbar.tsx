@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bell, Menu, Search, SlidersHorizontal } from "lucide-react";
 
@@ -44,7 +44,7 @@ const LOCATION_OPTIONS = [
   "Remote",
 ];
 
-export default function Navbar() {
+function NavbarContent() {
   const { toggle } = useSidebar();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -303,5 +303,21 @@ export default function Navbar() {
         </DialogContent>
       </Dialog>
     </header>
+  );
+}
+
+function NavbarFallback() {
+  return (
+    <header className="fixed left-0 right-0 top-0 z-40 h-20 bg-white px-4 sm:px-6 lg:left-64 lg:px-8">
+      <div className="flex h-full items-center" />
+    </header>
+  );
+}
+
+export default function Navbar() {
+  return (
+    <Suspense fallback={<NavbarFallback />}>
+      <NavbarContent />
+    </Suspense>
   );
 }
