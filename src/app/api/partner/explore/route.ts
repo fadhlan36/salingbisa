@@ -13,8 +13,8 @@ type Partner = {
   username: string;
   full_name: string;
   avatar_url: string | null;
-  skill_teach: string[];
-  skill_learn: string[];
+  teach: string[];
+  learn: string[];
 };
 
 type CurrentUserSkillData = {
@@ -25,30 +25,21 @@ type CurrentUserSkillData = {
 };
 
 export async function GET(request: NextRequest) {
-  // =========================
-  // 1. Authentication
-  // =========================
-
+  // Auth
   const { user, error: authError } = authenticate(request);
 
   if (authError) {
     return authError;
   }
 
-  // =========================
-  // 2. Pagination
-  // =========================
-
+  // Pagination
   const { searchParams } = new URL(request.url);
 
   const page = Math.max(Number(searchParams.get("page")) || 1, 1);
 
   const limit = Math.min(Number(searchParams.get("limit")) || 10, 10);
 
-  // =========================
-  // 3. Get current user skills
-  // =========================
-
+  // Current user skills
   const { data: currentUserSkillsData, error: currentUserSkillsError } =
     await supabaseAdmin
       .from("user_skills")
@@ -84,11 +75,28 @@ export async function GET(request: NextRequest) {
       .map((skill) => skill.skill.name),
   };
 
-  // =========================
-  // 4. Get partners
-  // =========================
+  // Existing matches
+  const { data: matches, error: matchError } = await supabaseAdmin
+    .from("matches")
+    .select("user_a_id, user_b_id")
+    .or(`user_a_id.eq.${user!.userId},user_b_id.eq.${user!.userId}`);
 
-  const { data: partnersData, error: partnersError } = await supabaseAdmin
+  if (matchError) {
+    return NextResponse.json(
+      {
+        message: matchError.message,
+      },
+      { status: 500 },
+    );
+  }
+
+  const matchedUserIds =
+    matches?.map((match) =>
+      match.user_a_id === user!.userId ? match.user_b_id : match.user_a_id,
+    ) ?? [];
+
+  // Partners
+  let partnersQuery = supabaseAdmin
     .from("partner_view")
     .select(
       `
@@ -96,11 +104,21 @@ export async function GET(request: NextRequest) {
       username,
       full_name,
       avatar_url,
-      skill_teach,
-      skill_learn
+      teach,
+      learn
     `,
     )
     .neq("id", user!.userId);
+
+  if (matchedUserIds.length > 0) {
+    partnersQuery = partnersQuery.not(
+      "id",
+      "in",
+      `(${matchedUserIds.join(",")})`,
+    );
+  }
+
+  const { data: partnersData, error: partnersError } = await partnersQuery;
 
   if (partnersError) {
     return NextResponse.json(
@@ -113,48 +131,31 @@ export async function GET(request: NextRequest) {
 
   const partners = (partnersData ?? []) as Partner[];
 
-  // =========================
-  // 5. Calculate match
-  // =========================
+  // Calculate match
+  const partnersWithMatch = partners.map((partner) => ({
+    id: partner.id,
+    avatar_url: partner.avatar_url,
+    full_name: partner.full_name,
+    skill_teach: partner.teach,
+    skill_learn: partner.learn,
+    match: calculateMatch(currentUserSkill, {
+      teach: partner.teach,
+      learn: partner.learn,
+    }),
+  }));
 
-  const partnersWithMatch = partners.map((partner) => {
-    const match = calculateMatch(currentUserSkill, {
-      teach: partner.skill_teach,
-      learn: partner.skill_learn,
-    });
-
-    return {
-      id: partner.id,
-      avatar_url: partner.avatar_url,
-      full_name: partner.full_name,
-      skill_teach: partner.skill_teach,
-      skill_learn: partner.skill_learn,
-      match,
-    };
-  });
-
-  // =========================
-  // 6. Sort by match
-  // =========================
-
+  // Sort
   partnersWithMatch.sort(
     (a, b) => Number.parseInt(b.match) - Number.parseInt(a.match),
   );
 
-  // =========================
-  // 7. Pagination
-  // =========================
-
+  // Pagination
   const start = (page - 1) * limit;
   const end = start + limit;
 
   const paginatedPartners = partnersWithMatch.slice(start, end);
 
   const hasMore = end < partnersWithMatch.length;
-
-  // =========================
-  // 8. Response
-  // =========================
 
   return NextResponse.json(
     {
