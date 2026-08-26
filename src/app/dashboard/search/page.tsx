@@ -5,6 +5,7 @@ import PartnerCard from "@/components/dashboard/partner-card";
 interface PartnerSearchResult {
   id: string;
   full_name: string;
+  username: string;
   avatar_url: string | null;
   teach: string[];
   learn: string[];
@@ -71,6 +72,7 @@ export default async function SearchPage({
   const partners = (result.data || []).map((partner) => ({
     id: partner.id,
     name: partner.full_name,
+    username: partner.username,
     avatar: partner.avatar_url || "/profile.jpg",
     match: 100, // TODO: endpoint /api/partner belum kirim skor match, sementara hardcode
     teach: partner.teach?.length ? partner.teach : ["Not specified"],
