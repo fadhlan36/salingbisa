@@ -12,7 +12,9 @@ import {
   MessageSquare,
   RefreshCw,
   UserPlus,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -44,7 +46,7 @@ interface UserProfile {
 }
 
 function formatSkillList(
-  skillsInput?: any,
+  skillsInput?: unknown,
   defaultIcon: string = "💡",
 ): SkillItem[] {
   if (!skillsInput) return [];
@@ -68,19 +70,20 @@ function formatSkillList(
       }
 
       if (typeof item === "object" && item !== null) {
+        const record = item as Record<string, unknown>;
         const name =
-          item.name ||
-          item.skill_name ||
-          item.title ||
-          item.name_skill ||
-          item.skill ||
+          record.name ||
+          record.skill_name ||
+          record.title ||
+          record.name_skill ||
+          record.skill ||
           "";
 
         if (!name) return null;
 
         return {
           name: String(name),
-          icon: item.icon || defaultIcon,
+          icon: typeof record.icon === "string" ? record.icon : defaultIcon,
         };
       }
 
@@ -107,6 +110,8 @@ export default function PartnerProfilePage({
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isPending, setIsPending] = useState(false);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -130,7 +135,6 @@ export default function PartnerProfilePage({
         throw new Error("User data is empty.");
       }
 
-      // PERBAIKAN: Gunakan OR (||) dan Boolean cast agar `false` tidak menghentikan evaluasi
       const apiMatchedStatus =
         Boolean(data.is_matched) ||
         Boolean(data.isMatched) ||
@@ -170,6 +174,46 @@ export default function PartnerProfilePage({
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRequestMatch = async () => {
+    if (!user?.id) return;
+
+    setIsRequesting(true);
+
+    try {
+      const res = await fetch("/api/matches", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      // Backend mengirim array: [{ message }, { status }]
+      const messageObj = Array.isArray(data)
+        ? data.find((item: { message?: string }) => item?.message)
+        : null;
+
+      const message = messageObj?.message;
+      const isSuccess = res.ok;
+
+      if (isSuccess) {
+        toast.success(message || "Request match berhasil dikirim.");
+        setIsPending(true);
+      } else {
+        toast.error(message || "Gagal mengirim request match.");
+      }
+    } catch (err) {
+      console.error("Error requesting match:", err);
+      toast.error("Gagal terhubung ke server. Silakan coba lagi.");
+    } finally {
+      setIsRequesting(false);
     }
   };
 
@@ -278,7 +322,7 @@ export default function PartnerProfilePage({
               </div>
             </div>
 
-            {/* Action Button: Send Message vs Request Match */}
+            {/* Action Button: Send Message vs Request Match vs Pending */}
             <div className="w-full md:w-auto shrink-0 flex justify-center md:justify-end pt-2 md:pt-0">
               {user.isMatched ? (
                 <Link
@@ -291,10 +335,22 @@ export default function PartnerProfilePage({
               ) : (
                 <Button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-full sm:w-auto"
+                  onClick={handleRequestMatch}
+                  disabled={isRequesting || isPending}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 w-full sm:w-auto ${
+                    isPending
+                      ? "bg-amber-100 text-amber-700 border border-amber-300 cursor-not-allowed hover:bg-amber-100 focus:ring-amber-500/20"
+                      : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500/20"
+                  }`}
                 >
-                  <UserPlus className="h-4 w-4" />
-                  Request Match
+                  {isRequesting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isPending ? (
+                    <Loader2 className="h-4 w-4" />
+                  ) : (
+                    <UserPlus className="h-4 w-4" />
+                  )}
+                  {isPending ? "Pending" : "Request Match"}
                 </Button>
               )}
             </div>

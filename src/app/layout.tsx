@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/navbar";
 import Sidebar from "@/components/layout/sidebar";
+import { Toaster } from "@/components/ui/sonner"; // 1. Impor Toaster dari Sonner
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -17,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${poppins.variable} h-full antialiased`}>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        {children}
+        <Toaster position="top-right" richColors />
+      </body>
     </html>
   );
 }
