@@ -21,7 +21,7 @@ const menus = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Explore", href: "/explore", icon: Search },
   { name: "My Partners", href: "/dashboard/my-partners", icon: Users },
-  { name: "Messages", href: "/messages", icon: MessageSquare },
+  { name: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { name: "Profile", href: "/dashboard/profile", icon: User }, //
   { name: "Settings", href: "/settings", icon: Settings },
