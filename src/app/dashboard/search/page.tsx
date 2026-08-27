@@ -62,6 +62,11 @@ export default async function SearchPage({
   const params = await searchParams;
   const token = (await cookies()).get("token")?.value;
 
+  if (!token) {
+    window.location.href = "/auth/login";
+    return;
+  }
+
   const currentPage = parseInt(params.page || "1", 10);
   const limit = params.limit || "12";
 
@@ -73,9 +78,7 @@ export default async function SearchPage({
   query.set("page", String(currentPage));
   query.set("limit", limit);
 
-  const result = token
-    ? await searchPartners(query, token)
-    : { message: "Unauthorized", data: [], status: 401 };
+  const result = await searchPartners(query, token);
 
   const partners = (result.data || []).map((partner) => ({
     id: partner.id,

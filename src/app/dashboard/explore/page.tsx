@@ -35,6 +35,12 @@ export default function Explorer() {
       const res = await fetch(
         `/api/partner/explore?page=${pageToFetch}&limit=10`,
       );
+
+      if (res.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
       if (!res.ok) {
         throw new Error("Failed to fetch partners data.");
       }

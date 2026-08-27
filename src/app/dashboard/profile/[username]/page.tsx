@@ -120,6 +120,11 @@ export default function PartnerProfilePage({
       const cleanUsername = decodeURIComponent(rawUsername).replace(/^@/, "");
       const res = await fetch(`/api/user/profile/${cleanUsername}`);
 
+      if (res.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error("User profile not found.");

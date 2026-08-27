@@ -28,6 +28,12 @@ export default function MyPartnersPage() {
     setError(null);
     try {
       const res = await fetch("/api/matches");
+
+      if (res.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
       if (!res.ok) {
         throw new Error("Failed to fetch partner data.");
       }

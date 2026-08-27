@@ -36,6 +36,11 @@ export default function PendingRequestsPage() {
         }),
       });
 
+      if (response.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
       if (!response.ok) {
         throw new Error("Failed to accept match");
       }
