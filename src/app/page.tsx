@@ -1,28 +1,21 @@
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { verifyToken } from "@/lib/auth";
 
-export default async function Home() {
-  const { error } = await supabaseAdmin.from("users").select("*").limit(1);
+export default async function RootPage() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
 
-  const {
-    data: { session },
-  } = await supabaseAdmin.auth.getSession();
+  let isAuthenticated = false;
 
-  if (session) {
-    redirect("/dashboard");
+  if (token) {
+    try {
+      verifyToken(token);
+      isAuthenticated = true;
+    } catch {
+      isAuthenticated = false;
+    }
   }
 
-  redirect("/auth/login");
-
-  // return (
-  //   <section className="flex min-h-screen items-center justify-center">
-  //     <div className="text-center">
-  //       <h1 className="text-2xl font-bold">Kitabisa 🚀</h1>
-  //       <p className="text-sm text-muted-foreground mt-2">
-  //         Status koneksi Supabase:{" "}
-  //         {error ? `Ada pesan (${error.message})` : "Connected ✅"}
-  //       </p>
-  //     </div>
-  //   </section>
-  // );
+  redirect(isAuthenticated ? "/dashboard" : "/auth/login");
 }

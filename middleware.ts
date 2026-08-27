@@ -2,35 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
 export function middleware(request: NextRequest) {
-  console.log("Middleware Hit: ", request.nextUrl.pathname);
   const token = request.cookies.get("token")?.value;
-  console.log("TOKEN: ", token);
 
   let user = null;
   if (token) {
     try {
       user = verifyToken(token);
-      console.log("VERIFY RESULT:", user);
-    } catch (err) {
-      console.log("VERIFY ERROR:", err);
+    } catch {
       user = null;
     }
   }
 
-  const protectedPage = ["/dashboard", "/profile", "/matches"];
-  const isProtectedPage = protectedPage.some((path) =>
-    request.nextUrl.pathname.startsWith(path),
+  const pathname = request.nextUrl.pathname;
+
+  const protectedPages = ["/dashboard", "/profile", "/matches"];
+  const isProtectedPage = protectedPages.some((path) =>
+    pathname.startsWith(path),
   );
+  const isAuthPage =
+    pathname === "/auth/login" || pathname === "/auth/register";
+
+  // Root page: redirect sesuai status login
+  if (pathname === "/") {
+    return NextResponse.redirect(
+      new URL(user ? "/dashboard" : "/auth/login", request.url),
+    );
+  }
 
   if (isProtectedPage && !user) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  if (
-    (request.nextUrl.pathname === "/auth/login" ||
-      request.nextUrl.pathname === "/auth/register") &&
-    user
-  ) {
+  if (isAuthPage && user) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -40,11 +43,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/profile/:path*",
-    "/matches/:path*",
-    "/auth/:path*",
-  ],
+  matcher: ["/", "/dashboard/:path*", "/auth/:path*"],
   runtime: "nodejs",
 };
