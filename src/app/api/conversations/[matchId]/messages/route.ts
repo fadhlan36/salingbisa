@@ -179,6 +179,32 @@ export async function POST(request: NextRequest, { params }: Props) {
     );
   }
 
+  const displayTime = formattedDate(messageData.created_at);
+
+  // Broadcast pesan baru ke semua client yang subscribe channel percakapan
+  // ini. Dipakai (bukan postgres_changes) karena browser client Supabase
+  // tidak terautentikasi lewat Supabase Auth (project ini pakai JWT custom
+  // sendiri), sehingga RLS akan selalu memblokir event postgres_changes.
+  // Broadcast dikirim dari server (supabaseAdmin) sehingga tidak terikat RLS.
+  try {
+    await supabaseAdmin.channel(`messages-${match.id}`).send({
+      type: "broadcast",
+      event: "new_message",
+      payload: {
+        id: messageData.id,
+        match_id: match.id,
+        sender_id: user!.userId,
+        content: messageData.content,
+        created_at: messageData.created_at,
+        display_time: displayTime,
+      },
+    });
+  } catch (broadcastError) {
+    // Broadcast gagal tidak boleh menggagalkan response utama — pesan
+    // sudah tersimpan di database, ini cuma notifikasi realtime tambahan.
+    console.error("Gagal broadcast pesan baru:", broadcastError);
+  }
+
   return NextResponse.json(
     {
       message: "Success send message",
@@ -186,7 +212,7 @@ export async function POST(request: NextRequest, { params }: Props) {
         id: messageData.id,
         content: messageData.content,
         created_at: messageData.created_at,
-        display_time: formattedDate(messageData.created_at),
+        display_time: displayTime,
       },
     },
     { status: 201 },
