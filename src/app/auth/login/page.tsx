@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ErrorAlert } from "@/components/common/error-alert";
 
+export const dynamic = "force-dynamic";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,6 +40,7 @@ export default function Login() {
       }
 
       router.replace("/dashboard");
+      router.refresh();
     } catch (error) {
       console.log(error);
       setError("Gagal terhubung ke server. Silakan coba lagi.");
