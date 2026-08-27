@@ -15,14 +15,10 @@ export function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  const protectedPages = ["/dashboard", "/profile", "/matches"];
-  const isProtectedPage = protectedPages.some((path) =>
-    pathname.startsWith(path),
-  );
+  const isProtectedPage = pathname.startsWith("/dashboard");
   const isAuthPage =
     pathname === "/auth/login" || pathname === "/auth/register";
 
-  // Root page: redirect sesuai status login
   if (pathname === "/") {
     return NextResponse.redirect(
       new URL(user ? "/dashboard" : "/auth/login", request.url),
