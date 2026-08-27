@@ -116,6 +116,11 @@ export default function MessagesPage() {
     try {
       const res = await fetch("/api/conversations");
 
+      if (res.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
       if (!res.ok) {
         throw new Error("Gagal memuat daftar percakapan.");
       }
