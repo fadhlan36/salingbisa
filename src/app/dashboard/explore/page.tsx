@@ -123,7 +123,7 @@ export default function Explorer() {
   }, [hasMore, loading, page, error]);
 
   return (
-    <section className="mx-auto max-w-7xl space-y-8 px-4 pb-10 pt-20 sm:px-6">
+    <section className="mx-auto max-w-7xl space-y-8 px-4 pb-10 md:pt-20 sm:px-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -136,10 +136,15 @@ export default function Explorer() {
         </div>
       </div>
 
-      {/* Grid Wrapper untuk PartnerCard */}
+      {/* Flex Wrapper untuk PartnerCard fixed-width */}
       <div className="grid grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {partners.map((partner) => (
-          <PartnerCard key={partner.id} partner={partner} />
+          <div
+            key={partner.id}
+            className="w-full flex justify-center [&>div]:w-full [&>div]:max-w-none sm:[&>div]:w-64"
+          >
+            <PartnerCard partner={partner} />
+          </div>
         ))}
       </div>
 
@@ -169,7 +174,7 @@ export default function Explorer() {
         )}
         {!hasMore && !loading && partners.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            You&apos;ve reached the end of the list.
+            You've reached the end of the list.
           </p>
         )}
       </div>

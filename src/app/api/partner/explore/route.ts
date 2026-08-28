@@ -136,6 +136,7 @@ export async function GET(request: NextRequest) {
     id: partner.id,
     avatar_url: partner.avatar_url,
     full_name: partner.full_name,
+    username: partner.username,
     skill_teach: partner.teach,
     skill_learn: partner.learn,
     match: calculateMatch(currentUserSkill, {
