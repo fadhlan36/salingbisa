@@ -1,11 +1,19 @@
-import HorizontalScroll from "@/components/common/horizontal-scroll";
-import PartnerCard from "@/components/dashboard/partner-card";
-import SkillCard from "@/components/dashboard/skill-card";
-import { verifyToken } from "@/lib/auth";
+import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-// Interface untuk Response API Partner (/api/partner/recomendation)
+import PartnerCard from "@/components/dashboard/partner-card";
+import SkillCard from "@/components/dashboard/skill-card";
+import CoverflowCarousel from "@/components/dashboard/coverflow-carousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { verifyToken } from "@/lib/auth";
+
 interface PartnerApiResponse {
   id: string;
   avatar_url: string | null;
@@ -16,14 +24,12 @@ interface PartnerApiResponse {
   match?: string;
 }
 
-// Interface untuk Response API Skill (/api/skill/recomendation)
 interface SkillApiResponse {
   id: string;
   skill_name: string;
   skillCount: number;
 }
 
-// Interface yang dikirim ke komponen PartnerCard
 export interface PartnerItem {
   id: string;
   name: string;
@@ -34,7 +40,6 @@ export interface PartnerItem {
   learn: string[];
 }
 
-// Interface yang dikirim ke komponen SkillCard
 export interface SkillItem {
   id: string;
   name: string;
@@ -42,9 +47,6 @@ export interface SkillItem {
   icon: string;
 }
 
-// Helper untuk membangun base URL absolut dari header request saat ini.
-// Diperlukan karena Server Component tidak bisa fetch dengan relative URL,
-// dan hardcode localhost akan gagal saat production (Vercel).
 async function getBaseUrl() {
   const headersList = await headers();
   const host = headersList.get("host");
@@ -52,7 +54,6 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
-// Helper rekursif untuk mendeteksi nama skill pada objek bersarang (nested)
 function extractSkillName(item: any): string {
   if (!item) return "";
   if (typeof item === "string") return item;
@@ -64,7 +65,6 @@ function extractSkillName(item: any): string {
     if (typeof item.skill === "string") return item.skill;
     if (typeof item.skills === "string") return item.skills;
 
-    // Jika objek bersarang seperti { skills: { id: "...", name: "React" } }
     if (item.skills && typeof item.skills === "object") {
       return extractSkillName(item.skills);
     }
@@ -75,7 +75,6 @@ function extractSkillName(item: any): string {
   return "";
 }
 
-// Helper utama untuk mengekstrak array daftar skill dari berbagai format data
 function parseSkillList(skillsInput: any): string[] {
   if (!skillsInput) return [];
 
@@ -103,7 +102,6 @@ function parseSkillList(skillsInput: any): string[] {
   return [];
 }
 
-// Helper ikon kategorikal berdasarkan nama skill
 const getSkillIcon = (name: string) => {
   const lower = name.toLowerCase();
   if (lower.includes("design") || lower.includes("ui")) return "🎨";
@@ -119,7 +117,6 @@ const getSkillIcon = (name: string) => {
   return "💡";
 };
 
-// Fetch Rekomendasi Partner
 async function getPartnerRecommendations(
   token: string,
 ): Promise<PartnerItem[]> {
@@ -144,7 +141,6 @@ async function getPartnerRecommendations(
       const numericMatch =
         parseInt(item.match?.replace("%", "") || "0", 10) || 0;
 
-      // Fallback pengecekan berbagai properti field dari response API
       const rawTeach =
         item.skill_teach ??
         (item as any).teachSkill ??
@@ -164,7 +160,7 @@ async function getPartnerRecommendations(
         id: item.id,
         name: item.full_name,
         username: item.username || item.id,
-        avatar: item.avatar_url || "/profile.jpg",
+        avatar: item.avatar_url || "/profile.png",
         match: numericMatch,
         teach: teachSkills,
         learn: learnSkills,
@@ -176,7 +172,6 @@ async function getPartnerRecommendations(
   }
 }
 
-// Fetch Rekomendasi Skill
 async function getSkillRecommendations(token: string): Promise<SkillItem[]> {
   try {
     const baseUrl = await getBaseUrl();
@@ -232,69 +227,89 @@ export default async function Dashboard() {
     getSkillRecommendations(token),
   ]);
 
+  const firstName = payload?.full_name
+    ? payload.full_name.split(" ")[0]
+    : "there";
+
   return (
-    <section className="mx-auto max-w-7xl space-y-8 pt-20 pb-10 px-4 sm:px-6">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-2xl sm:text-3xl font-bold">
-          Hai, {payload?.full_name ? payload?.full_name : "there"} 👋
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Find learning partners and grow together.
+    <div className="space-y-10">
+      {/* Header Salam Pembuka */}
+      <div className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          Halo, {firstName} 👋
+        </h1>
+        <p className="text-xs sm:text-sm font-medium text-slate-400">
+          Eksplorasi rekan belajar dan kembangkan keahlianmu hari ini.
         </p>
       </div>
 
-      {/* Recommendation Match */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-col gap-1">
-            <h3 className="text-xl font-semibold">Top Picks For You</h3>
-            <p className="text-sm text-muted-foreground">
-              People who want to learn what you teach, and can teach what you
-              want to learn.
-            </p>
-          </div>
+      {/* Top Picks Section - 3D Coverflow Carousel */}
+      <div className="space-y-4">
+        <div className="flex items-end justify-between px-1">
           <div>
-            <p className="text-md text-indigo-600 font-bold cursor-pointer hover:text-indigo-700 transition-all duration-200">
-              See All
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Top Picks For You
+            </h2>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">
+              Partner dengan kecocokan skill tertinggi untukmu.
             </p>
           </div>
+          <Link
+            href="/dashboard/partners"
+            className="inline-flex items-center gap-1 text-xs font-bold text-[#4f39f6] hover:opacity-80 transition-opacity"
+          >
+            See all
+            <span className="text-sm">→</span>
+          </Link>
         </div>
 
-        {/* Partner Cards */}
-        <div className="flex flex-col gap-4">
-          {partners.length > 0 ? (
-            <HorizontalScroll>
-              {partners.map((partner: PartnerItem) => (
-                <PartnerCard key={partner.id} partner={partner} />
-              ))}
-            </HorizontalScroll>
-          ) : (
-            <div className="rounded-xl border border-dashed p-8 text-center text-slate-500">
-              Belum ada rekomendasi partner yang ditemukan.
-            </div>
-          )}
-        </div>
+        {partners.length > 0 ? (
+          <CoverflowCarousel>
+            {partners.map((partner: PartnerItem) => (
+              <PartnerCard key={partner.id} partner={partner} />
+            ))}
+          </CoverflowCarousel>
+        ) : (
+          <div className="rounded-[28px] bg-slate-200/50 dark:bg-slate-900/60 py-12 text-center text-xs font-medium text-slate-400 border-0 ring-0">
+            Belum ada rekomendasi partner yang ditemukan.
+          </div>
+        )}
       </div>
 
-      {/* Browse Available Skills */}
-      <div className="flex flex-col gap-4">
-        <h3 className="text-xl font-semibold">Browse by Skills</h3>
+      {/* Skills Section (Carousel Standar) */}
+      <div className="space-y-4">
+        <div className="px-1">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Browse by Skills
+          </h2>
+          <p className="text-xs font-medium text-slate-400 mt-0.5">
+            Keahlian paling banyak diminati oleh komunitas.
+          </p>
+        </div>
 
-        <div className="flex flex-col gap-4">
-          {skills.length > 0 ? (
-            <HorizontalScroll>
+        {skills.length > 0 ? (
+          <Carousel opts={{ align: "start" }} className="w-full relative group">
+            <CarouselContent className="-ml-4">
               {skills.map((skill: SkillItem, index: number) => (
-                <SkillCard key={`${skill.id}-${index}`} skill={skill} />
+                <CarouselItem
+                  key={`${skill.id}-${index}`}
+                  className="pl-4 basis-auto"
+                >
+                  <SkillCard skill={skill} />
+                </CarouselItem>
               ))}
-            </HorizontalScroll>
-          ) : (
-            <div className="rounded-xl border border-dashed p-8 text-center text-slate-500">
-              Belum ada rekomendasi skill yang tersedia.
+            </CarouselContent>
+            <div className="hidden sm:block">
+              <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          )}
-        </div>
+          </Carousel>
+        ) : (
+          <div className="rounded-[24px] bg-slate-200/50 dark:bg-slate-900/60 py-12 text-center text-xs font-medium text-slate-400 border-0 ring-0">
+            Belum ada rekomendasi skill yang tersedia.
+          </div>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

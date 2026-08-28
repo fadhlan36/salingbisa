@@ -137,7 +137,7 @@ export default function MessagesPage() {
         id: item.id,
         partnerId: item.partner?.id || "",
         name: item.partner?.full_name || item.partner?.username || "Unknown",
-        avatar: item.partner?.avatar_url || "/profile.jpg",
+        avatar: item.partner?.avatar_url || "/profile.png",
         // TODO: API belum mengirim status online/offline partner, sementara default "Offline"
         status: "Offline",
         lastMessage: item.last_message?.content || "Belum ada pesan",

@@ -84,7 +84,7 @@ export default async function SearchPage({
     id: partner.id,
     name: partner.full_name,
     username: partner.username,
-    avatar: partner.avatar_url || "/profile.jpg",
+    avatar: partner.avatar_url || "/profile.png",
     match: 100, // TODO: endpoint /api/partner belum kirim skor match, sementara hardcode
     teach: partner.teach?.length ? partner.teach : ["Not specified"],
     learn: partner.learn?.length ? partner.learn : ["Not specified"],

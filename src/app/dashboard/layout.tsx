@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "../globals.css";
+import "@/app/globals.css";
 import Navbar from "@/components/layout/navbar";
 import Sidebar from "@/components/layout/sidebar";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
@@ -16,10 +16,11 @@ export default function DashboardLayout({
     <SidebarProvider>
       <Sidebar />
 
-      <div className="lg:ml-64">
+      {/* Menambahkan bg-[#f9fafb] dan min-h-screen agar background full sampai bawah */}
+      <div className="lg:ml-64 min-h-screen bg-[#f9fafb] dark:bg-slate-950 flex flex-col">
         <Navbar />
 
-        <main className="pt-24 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 mt-24 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>

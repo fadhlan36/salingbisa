@@ -148,7 +148,7 @@ async function getUserProfile(
           reviewsCount: data.reviews_count ?? 0,
           bioHeadline: data.bio || "Belum ada bio singkat.",
           aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
-          avatar: data.avatar_url || "/profile.jpg",
+          avatar: data.avatar_url || "/profile.png",
           isOnline: data.is_online ?? true,
           stats: {
             learningPartners: data.stats?.learning_partners ?? 0,
@@ -176,7 +176,7 @@ async function getUserProfile(
     reviewsCount: 0,
     bioHeadline: "Tambahkan deskripsi singkat profil kamu.",
     aboutMe: "Tambahkan informasi lengkap tentang dirimu.",
-    avatar: "/profile.jpg",
+    avatar: "/profile.png",
     isOnline: true,
     stats: {
       learningPartners: 0,
