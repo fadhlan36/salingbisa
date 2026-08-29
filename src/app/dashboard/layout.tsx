@@ -16,13 +16,11 @@ export default function DashboardLayout({
     <SidebarProvider>
       <Sidebar />
 
-      {/* Menambahkan bg-[#f9fafb] dan min-h-screen agar background full sampai bawah */}
       <div className="lg:ml-64 min-h-screen bg-[#f9fafb] dark:bg-slate-950 flex flex-col">
         <Navbar />
 
-        <main className="flex-1 mt-24 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl">{children}</div>
-        </main>
+        {/* main dibuat flex-1 & pt-16 (sesuai tinggi Navbar) tanpa padding/margin bawaan */}
+        <main className="flex-1 flex flex-col pt-16">{children}</main>
       </div>
     </SidebarProvider>
   );

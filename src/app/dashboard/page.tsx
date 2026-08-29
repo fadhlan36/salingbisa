@@ -232,83 +232,88 @@ export default async function Dashboard() {
     : "there";
 
   return (
-    <div className="space-y-10">
-      {/* Header Salam Pembuka */}
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Halo, {firstName} 👋
-        </h1>
-        <p className="text-xs sm:text-sm font-medium text-slate-400">
-          Eksplorasi rekan belajar dan kembangkan keahlianmu hari ini.
-        </p>
-      </div>
-
-      {/* Top Picks Section - 3D Coverflow Carousel */}
-      <div className="space-y-4">
-        <div className="flex items-end justify-between px-1">
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Top Picks For You
-            </h2>
-            <p className="text-xs font-medium text-slate-400 mt-0.5">
-              Partner dengan kecocokan skill tertinggi untukmu.
-            </p>
-          </div>
-          <Link
-            href="/dashboard/partners"
-            className="inline-flex items-center gap-1 text-xs font-bold text-[#4f39f6] hover:opacity-80 transition-opacity"
-          >
-            See all
-            <span className="text-sm">→</span>
-          </Link>
-        </div>
-
-        {partners.length > 0 ? (
-          <CoverflowCarousel>
-            {partners.map((partner: PartnerItem) => (
-              <PartnerCard key={partner.id} partner={partner} />
-            ))}
-          </CoverflowCarousel>
-        ) : (
-          <div className="rounded-[28px] bg-slate-200/50 dark:bg-slate-900/60 py-12 text-center text-xs font-medium text-slate-400 border-0 ring-0">
-            Belum ada rekomendasi partner yang ditemukan.
-          </div>
-        )}
-      </div>
-
-      {/* Skills Section (Carousel Standar) */}
-      <div className="space-y-4">
-        <div className="px-1">
-          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Browse by Skills
-          </h2>
-          <p className="text-xs font-medium text-slate-400 mt-0.5">
-            Keahlian paling banyak diminati oleh komunitas.
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full">
+      <div className="space-y-10">
+        {/* Header Salam Pembuka */}
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Halo, {firstName} 👋
+          </h1>
+          <p className="text-xs sm:text-sm font-medium text-slate-400">
+            Eksplorasi rekan belajar dan kembangkan keahlianmu hari ini.
           </p>
         </div>
 
-        {skills.length > 0 ? (
-          <Carousel opts={{ align: "start" }} className="w-full relative group">
-            <CarouselContent className="-ml-4">
-              {skills.map((skill: SkillItem, index: number) => (
-                <CarouselItem
-                  key={`${skill.id}-${index}`}
-                  className="pl-4 basis-auto"
-                >
-                  <SkillCard skill={skill} />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <div className="hidden sm:block">
-              <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+        {/* Top Picks Section - 3D Coverflow Carousel */}
+        <div className="space-y-4">
+          <div className="flex items-end justify-between px-1">
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                Top Picks For You
+              </h2>
+              <p className="text-xs font-medium text-slate-400 mt-0.5">
+                Partner dengan kecocokan skill tertinggi untukmu.
+              </p>
             </div>
-          </Carousel>
-        ) : (
-          <div className="rounded-[24px] bg-slate-200/50 dark:bg-slate-900/60 py-12 text-center text-xs font-medium text-slate-400 border-0 ring-0">
-            Belum ada rekomendasi skill yang tersedia.
+            <Link
+              href="/dashboard/partners"
+              className="inline-flex items-center gap-1 text-xs font-bold text-[#4f39f6] hover:opacity-80 transition-opacity"
+            >
+              See all
+              <span className="text-sm">→</span>
+            </Link>
           </div>
-        )}
+
+          {partners.length > 0 ? (
+            <CoverflowCarousel>
+              {partners.map((partner: PartnerItem) => (
+                <PartnerCard key={partner.id} partner={partner} />
+              ))}
+            </CoverflowCarousel>
+          ) : (
+            <div className="rounded-[28px] bg-slate-200/50 dark:bg-slate-900/60 py-12 text-center text-xs font-medium text-slate-400 border-0 ring-0">
+              Belum ada rekomendasi partner yang ditemukan.
+            </div>
+          )}
+        </div>
+
+        {/* Skills Section (Carousel Standar) */}
+        <div className="space-y-4">
+          <div className="px-1">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Browse by Skills
+            </h2>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">
+              Keahlian paling banyak diminati oleh komunitas.
+            </p>
+          </div>
+
+          {skills.length > 0 ? (
+            <Carousel
+              opts={{ align: "start" }}
+              className="w-full relative group"
+            >
+              <CarouselContent className="-ml-4">
+                {skills.map((skill: SkillItem, index: number) => (
+                  <CarouselItem
+                    key={`${skill.id}-${index}`}
+                    className="pl-4 basis-auto"
+                  >
+                    <SkillCard skill={skill} />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="hidden sm:block">
+                <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </Carousel>
+          ) : (
+            <div className="rounded-[24px] bg-slate-200/50 dark:bg-slate-900/60 py-12 text-center text-xs font-medium text-slate-400 border-0 ring-0">
+              Belum ada rekomendasi skill yang tersedia.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
