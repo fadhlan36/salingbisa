@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import PartnerCard from "@/components/dashboard/partner-card";
 import { Button } from "@/components/ui/button";
 
@@ -156,15 +156,9 @@ export default function Explorer() {
                 </div>
               )}
 
-              {/* Glow layer */}
-              <div
-                className="pointer-events-none absolute inset-x-4 inset-y-2 rounded-[36px] bg-gradient-to-r from-white/70 via-indigo-400 to-indigo-600 blur-md animate-rainbow-flash opacity-0"
-                style={{ animationDelay: `${delay}ms` }}
-              />
-
               {/* Card wrapper: w-full mengikuti lebar section, aspect-[3/4] menjaga proporsi */}
               <div
-                className="w-full aspect-[3/4] max-h-[85%] animate-pop-in-bouncy opacity-0 flex justify-center items-center [&>div]:w-full [&>div]:h-full"
+                className="w-full aspect-[3/4] max-h-[85%] animate-pop-in-bouncy flex justify-center items-center [&>div]:w-full [&>div]:h-full"
                 style={{ animationDelay: `${delay}ms` }}
               >
                 <PartnerCard partner={partner} />
@@ -203,28 +197,52 @@ export default function Explorer() {
 
         {/* Error state */}
         {error && (
-          <div className="flex h-full w-full snap-center snap-always flex-col items-center justify-center p-6 text-center">
-            <p className="text-sm font-medium text-red-600">{error}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchPartners(page)}
-              className="mt-3 gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Try Again
-            </Button>
+          <div className="flex h-full w-full snap-center snap-always items-center justify-center p-4 shrink-0">
+            <div className="flex w-full max-w-[320px] flex-col items-center justify-center space-y-4 rounded-[32px] border border-red-200/80 bg-red-50/50 p-6 text-center dark:border-red-900/30 dark:bg-red-950/20 backdrop-blur-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                  Oops! Something went wrong
+                </h4>
+                <p className="text-xs text-muted-foreground line-clamp-3">
+                  {error}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchPartners(page)}
+                className="rounded-full text-xs gap-2 border-red-200 hover:bg-red-100/50 dark:border-red-800"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Try Again
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* Infinite Scroll Trigger */}
-        {hasMore && (
+        {/* Seamless Infinite Scroll Trigger & Center Loading */}
+        {hasMore && !error && (
           <div
             ref={observerRef}
-            className="h-12 w-full flex items-center justify-center shrink-0"
+            className="flex h-full w-full snap-center snap-always items-center justify-center p-4 shrink-0"
           >
             {loading && (
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+              <div className="flex w-full max-w-[320px] flex-col items-center justify-center space-y-4 rounded-[32px] border border-slate-200/80 bg-white/60 p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900/60 backdrop-blur-sm">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-950/50">
+                  <Loader2 className="h-6 w-6 animate-spin text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    Finding potential partners...
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Please wait a moment while we fetch more profiles for you.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         )}
