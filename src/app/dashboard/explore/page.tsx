@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronDown, Loader2, RefreshCw } from "lucide-react";
 import PartnerCard from "@/components/dashboard/partner-card";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,7 @@ export default function Explorer() {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   const observerRef = useRef<HTMLDivElement | null>(null);
   const mobileContainerRef = useRef<HTMLDivElement | null>(null);
@@ -130,12 +131,15 @@ export default function Explorer() {
 
   return (
     <section className="w-full md:mx-auto md:max-w-7xl">
-      {/* ============================================================ */}
       {/* MOBILE VERSION — Full Width & Center Fitted                  */}
-      {/* ============================================================ */}
       <div
         ref={mobileContainerRef}
-        /* h-[calc(100dvh-4rem)] mengambil sisa tinggi viewport di bawah Navbar */
+        onScroll={(e) => {
+          // Jika posisi scroll vertikal lebih dari 20px, sembunyikan indikator
+          if (e.currentTarget.scrollTop > 20 && !hasScrolled) {
+            setHasScrolled(true);
+          }
+        }}
         className="md:hidden h-[calc(100dvh-4rem)] w-full overflow-y-auto snap-y snap-mandatory scroll-smooth bg-background"
       >
         {/* Tiap partner card — snap child */}
@@ -156,13 +160,26 @@ export default function Explorer() {
                 </div>
               )}
 
-              {/* Card wrapper: w-full mengikuti lebar section, aspect-[3/4] menjaga proporsi */}
+              {/* Card wrapper */}
               <div
                 className="w-full aspect-[3/4] max-h-[85%] animate-pop-in-bouncy flex justify-center items-center [&>div]:w-full [&>div]:h-full"
                 style={{ animationDelay: `${delay}ms` }}
               >
                 <PartnerCard partner={partner} />
               </div>
+
+              {/* Indicator Scroll Down khusus slide pertama */}
+              {index === 0 && !hasScrolled && (
+                <div
+                  className="absolute bottom-2 left-0 right-0 z-20 flex flex-col items-center justify-center pointer-events-none animate-bounce transition-opacity duration-300"
+                  style={{ animationDuration: "2s" }}
+                >
+                  <span className="rounded-full bg-slate-900/80 dark:bg-slate-900/90 px-3 py-1 text-[10px] font-medium tracking-wider uppercase text-white/90 backdrop-blur-md border border-white/10 shadow-lg">
+                    Scroll Down
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-slate-800 dark:text-slate-200 drop-shadow-md -mt-0.5" />
+                </div>
+              )}
             </div>
           );
         })}
@@ -248,9 +265,7 @@ export default function Explorer() {
         )}
       </div>
 
-      {/* ============================================================ */}
       {/* DESKTOP VERSION — Normal Grid & Scroll                       */}
-      {/* ============================================================ */}
       <div className="hidden md:block space-y-8 p-6 lg:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
