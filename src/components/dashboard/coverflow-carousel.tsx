@@ -154,7 +154,7 @@ export default function CoverflowCarousel({
               className="pl-4 sm:pl-8 basis-auto select-none"
             >
               <div
-                className="coverflow-item cursor-pointer will-change-transform"
+                className="coverflow-item will-change-transform cursor-grab active:cursor-grabbing"
                 style={{
                   transform: "scale(0.75)",
                   opacity: 0.4,

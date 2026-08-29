@@ -235,14 +235,14 @@ export default async function Dashboard() {
     <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full">
       <div className="space-y-10">
         {/* Header Salam Pembuka */}
-        <div className="space-y-1">
+        {/* <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Halo, {firstName} 👋
           </h1>
           <p className="text-xs sm:text-sm font-medium text-slate-400">
             Eksplorasi rekan belajar dan kembangkan keahlianmu hari ini.
           </p>
-        </div>
+        </div> */}
 
         {/* Top Picks Section - 3D Coverflow Carousel */}
         <div className="space-y-4">
@@ -255,13 +255,13 @@ export default async function Dashboard() {
                 Partner dengan kecocokan skill tertinggi untukmu.
               </p>
             </div>
-            <Link
+            {/* <Link
               href="/dashboard/partners"
               className="inline-flex items-center gap-1 text-xs font-bold text-[#4f39f6] hover:opacity-80 transition-opacity"
             >
               See all
               <span className="text-sm">→</span>
-            </Link>
+            </Link> */}
           </div>
 
           {partners.length > 0 ? (
@@ -278,7 +278,7 @@ export default async function Dashboard() {
         </div>
 
         {/* Skills Section (Carousel Standar) */}
-        <div className="space-y-4">
+        {/* <div className="space-y-4">
           <div className="px-1">
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               Browse by Skills
@@ -313,7 +313,7 @@ export default async function Dashboard() {
               Belum ada rekomendasi skill yang tersedia.
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </div>
   );
