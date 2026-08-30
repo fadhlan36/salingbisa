@@ -226,7 +226,7 @@ export default async function Dashboard() {
   const highMatchPartners = partners.filter((partner) => partner.match > 70);
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full mt-6">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full mt-6 pb-28 sm:pb-8">
       <div className="space-y-10">
         {/* Top Picks Section - 3D Coverflow Carousel, dengan filter skill */}
         <TopPicksSection partners={partners} skills={skills} />
