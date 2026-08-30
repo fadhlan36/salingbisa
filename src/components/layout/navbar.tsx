@@ -19,8 +19,8 @@ import {
   RiMessage3Line,
   RiMessage3Fill,
   RiSearchLine,
-  RiXtzLine,
   RiNotification3Line,
+  RiCloseLine,
 } from "react-icons/ri";
 import { useBadgeCount } from "@/app/hooks/useBadgeCount";
 
@@ -213,9 +213,9 @@ function NavbarContent() {
                 {searchValue && (
                   <button
                     onClick={() => handleSearchChange("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   >
-                    <RiXtzLine className="h-4 w-4" />
+                    <RiCloseLine className="h-4 w-4" />
                   </button>
                 )}
               </div>
