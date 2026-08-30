@@ -1,20 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, User, Settings, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { User, Settings, LogOut } from "lucide-react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function ProfileDropDown() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        router.push("/auth/login");
+        router.refresh();
+      } else {
+        console.error("Gagal melakukan logout");
+      }
+    } catch (error) {
+      console.error("Terjadi kesalahan saat logout:", error);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -51,7 +70,10 @@ export function ProfileDropDown() {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer">
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className="text-red-600 focus:text-red-600 cursor-pointer"
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
