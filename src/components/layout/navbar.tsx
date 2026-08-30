@@ -1,113 +1,113 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, Menu, Search, SlidersHorizontal } from "lucide-react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import Link from "next/link";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ProfileDropDown } from "../common/profile-dropdown";
-import { useSidebar } from "./sidebar-context";
 
-const DEFAULT_SKILL_OPTIONS = [
-  "React",
-  "Next.js",
-  "TypeScript",
-  "Python",
-  "UI/UX Design",
-  "Node.js",
-  "Tailwind CSS",
-  "Machine Learning",
+import {
+  RiHome5Line,
+  RiHome5Fill,
+  RiCompass3Line,
+  RiCompass3Fill,
+  RiGroupLine,
+  RiGroupFill,
+  RiMessage3Line,
+  RiMessage3Fill,
+  RiSearchLine,
+  RiXtzLine,
+  RiNotification3Line,
+} from "react-icons/ri";
+import { useBadgeCount } from "@/app/hooks/useBadgeCount";
+
+export const NAV_MOBILE = [
+  {
+    name: "Explore",
+    href: "/dashboard/explore",
+    iconOutline: RiCompass3Line,
+    iconSolid: RiCompass3Fill,
+  },
+  {
+    name: "My Partners",
+    href: "/dashboard/my-partners",
+    iconOutline: RiGroupLine,
+    iconSolid: RiGroupFill,
+  },
+  {
+    name: "Home",
+    href: "/dashboard",
+    iconOutline: RiHome5Line,
+    iconSolid: RiHome5Fill,
+  },
+  {
+    name: "Messages",
+    href: "/dashboard/messages",
+    iconOutline: RiMessage3Line,
+    iconSolid: RiMessage3Fill,
+  },
 ];
 
-const LOCATION_OPTIONS = [
-  "Jakarta",
-  "Bandung",
-  "Surabaya",
-  "Yogyakarta",
-  "Bali",
-  "Remote",
+const NAV_MENUS = [
+  { name: "Home", href: "/dashboard", icon: RiHome5Line },
+  { name: "Explore", href: "/dashboard/explore", icon: RiCompass3Line },
+  {
+    name: "My Partners",
+    href: "/dashboard/my-partners",
+    icon: RiGroupLine,
+  },
+  { name: "Messages", href: "/dashboard/messages", icon: RiMessage3Line },
 ];
 
 function NavbarContent() {
-  const { toggle } = useSidebar();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const initialSearch = searchParams.get("search") || "";
-  const initialTeach = searchParams.get("teach") || "";
-  const initialLearn = searchParams.get("learn") || "";
-  const initialLocation = searchParams.get("location") || "";
 
   const [searchValue, setSearchValue] = useState(initialSearch);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [teach, setTeach] = useState(initialTeach);
-  const [learn, setLearn] = useState(initialLearn);
-  const [location, setLocation] = useState(initialLocation);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { count } = useBadgeCount();
 
-  const [skillOptions, setSkillOptions] = useState<string[]>(
-    DEFAULT_SKILL_OPTIONS,
-  );
-
-  // Ref untuk menampung timer debounce
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Fetch daftar skill dari API
+  // Auto focus ke input saat search terbuka
   useEffect(() => {
-    async function fetchSkills() {
-      try {
-        const res = await fetch("/api/skill/recomendation");
-        if (res.ok) {
-          const data = await res.json();
-          const extractedNames: string[] = data
-            .map(
-              (item: { skill_name?: string; name?: string }) =>
-                item.skill_name || item.name,
-            )
-            .filter((name: string | undefined): name is string =>
-              Boolean(name && name.trim() !== ""),
-            );
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
-          const uniqueSkills: string[] = Array.from(
-            new Set<string>(extractedNames),
-          );
-
-          if (uniqueSkills.length > 0) {
-            setSkillOptions(uniqueSkills);
-          }
-        }
-      } catch (error) {
-        console.error("Gagal mengambil daftar skill untuk filter:", error);
+  // Deteksi klik di luar container input search untuk menutupnya
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsSearchOpen(false);
       }
     }
 
-    fetchSkills();
-  }, []);
+    if (isSearchOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
 
-  // Sync state dengan URL Params jika URL berubah (Navigasi luar)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSearchOpen]);
+
   useEffect(() => {
     setSearchValue(searchParams.get("search") || "");
-    setTeach(searchParams.get("teach") || "");
-    setLearn(searchParams.get("learn") || "");
-    setLocation(searchParams.get("location") || "");
   }, [searchParams]);
 
-  // Cleanup timer saat unmount
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -116,17 +116,9 @@ function NavbarContent() {
     };
   }, []);
 
-  const buildParams = (searchQuery: string) => {
-    const params = new URLSearchParams();
-    if (searchQuery.trim()) params.set("search", searchQuery.trim());
-    if (teach) params.set("teach", teach);
-    if (learn) params.set("learn", learn);
-    if (location) params.set("location", location);
-    return params;
-  };
-
   const goToSearch = (customSearch = searchValue) => {
-    const params = buildParams(customSearch);
+    const params = new URLSearchParams();
+    if (customSearch.trim()) params.set("search", customSearch.trim());
     const queryString = params.toString();
     const targetUrl = queryString
       ? `/dashboard/search?${queryString}`
@@ -135,180 +127,187 @@ function NavbarContent() {
     router.push(targetUrl);
   };
 
-  // Handler pengetikan manual pengguna + Debounce
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
 
-    // Hapus timer lama jika pengguna masih mengetik
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Buat timer baru untuk debounce
     debounceTimerRef.current = setTimeout(() => {
       goToSearch(value);
     }, 400);
   };
 
-  const applyFilter = () => {
-    goToSearch(searchValue);
-    setFilterOpen(false);
-  };
-
-  const handleResetFilter = () => {
-    setTeach("");
-    setLearn("");
-    setLocation("");
-  };
-
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 h-20 bg-white px-4 sm:px-6 lg:left-64 lg:px-8">
-      <div className="flex h-full items-center">
-        {/* Hamburger — mobile only */}
-        <button
-          onClick={toggle}
-          className="mr-3 shrink-0 lg:hidden"
-          aria-label="Open menu"
-        >
-          <Menu className="h-6 w-6 text-gray-700" />
-        </button>
-
-        {/* Search */}
-        <div className="flex flex-1 justify-center">
-          <div className="flex w-full max-w-xl items-center gap-2 sm:gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchValue}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    // Jika tekan Enter, batalkan timer debounce lalu langsung jalankan search
-                    if (debounceTimerRef.current) {
-                      clearTimeout(debounceTimerRef.current);
-                    }
-                    goToSearch(searchValue);
-                  }
-                }}
-                placeholder="Cari keahlian atau nama pengguna..."
-                className="pl-10"
-              />
-            </div>
-
-            {/* Filter Buttons */}
-            <Button
-              variant="outline"
-              className="hidden sm:inline-flex"
-              onClick={() => setFilterOpen(true)}
-            >
-              <SlidersHorizontal className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="shrink-0 sm:hidden"
-              onClick={() => setFilterOpen(true)}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Right Menu */}
-        <div className="ml-3 flex shrink-0 items-center gap-3 sm:ml-8 sm:gap-5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden cursor-pointer sm:inline-flex"
+    <>
+      {/* HEADER ATAS (Top Bar) */}
+      <header className="fixed left-0 right-0 top-0 z-40 py-3 border-b bg-white px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4">
+          {/* Brand Logo - Sembunyi di mobile jika search aktif */}
+          <Link
+            href="/dashboard"
+            className={cn("shrink-0", isSearchOpen && "hidden md:block")}
           >
-            <Bell className="h-5 w-5" />
-          </Button>
-          <ProfileDropDown />
-        </div>
-      </div>
+            <h1 className="text-xl font-bold">
+              <span className="text-indigo-600">Saling</span>
+              <span className="text-black">Bisa</span>
+            </h1>
+          </Link>
 
-      {/* Filter Dialog */}
-      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Filter Partner</DialogTitle>
-          </DialogHeader>
+          {/* Desktop Nav Links */}
+          {!isSearchOpen && (
+            <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+              {NAV_MENUS.map((menu) => {
+                const Icon = menu.icon;
+                const active =
+                  menu.href === "/dashboard"
+                    ? pathname === "/dashboard"
+                    : pathname.startsWith(menu.href);
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="teach">Skill yang diajarkan</Label>
-              <Select value={teach} onValueChange={setTeach}>
-                <SelectTrigger id="teach">
-                  <SelectValue placeholder="Pilih skill yang diajarkan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {skillOptions.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                return (
+                  <Link
+                    key={menu.name}
+                    href={menu.href}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "text-indigo-700 font-semibold"
+                        : "text-gray-600 hover:text-gray-900",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{menu.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+
+          {/* Search Input Bar - Mengambil full width & terpusat di tengah */}
+          {isSearchOpen && (
+            <div
+              ref={searchContainerRef}
+              className="flex w-full md:w-auto md:flex-1 justify-center max-w-lg mx-auto items-center gap-2 animate-in fade-in zoom-in-95 duration-150"
+            >
+              <div className="relative w-full">
+                <RiSearchLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={searchInputRef}
+                  value={searchValue}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (debounceTimerRef.current) {
+                        clearTimeout(debounceTimerRef.current);
+                      }
+                      goToSearch(searchValue);
+                    } else if (e.key === "Escape") {
+                      setIsSearchOpen(false);
+                    }
+                  }}
+                  placeholder="Search skills or name..."
+                  className="pl-9 h-9 text-sm pr-8 border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-sm shadow-black/20 focus:shadow-black/30 transition-shadow w-full"
+                />
+                {searchValue && (
+                  <button
+                    onClick={() => handleSearchChange("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <RiXtzLine className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="learn">Skill yang ingin dipelajari</Label>
-              <Select value={learn} onValueChange={setLearn}>
-                <SelectTrigger id="learn">
-                  <SelectValue placeholder="Pilih skill yang dipelajari" />
-                </SelectTrigger>
-                <SelectContent>
-                  {skillOptions.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Right Side: Search Icon Trigger, Notification & Profile Dropdown */}
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-2",
+              isSearchOpen && "hidden md:flex",
+            )}
+          >
+            {/* 1. Search Icon Trigger */}
+            {!isSearchOpen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full text-gray-600 hover:bg-transparent hover:text-gray-900 cursor-pointer flex items-center justify-center shrink-0"
+                onClick={() => setIsSearchOpen(true)}
+              >
+                <RiSearchLine className="h-5 w-5" />
+              </Button>
+            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="location">Lokasi</Label>
-              <Select value={location} onValueChange={setLocation}>
-                <SelectTrigger id="location">
-                  <SelectValue placeholder="Pilih lokasi" />
-                </SelectTrigger>
-                <SelectContent>
-                  {LOCATION_OPTIONS.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* 2. Notification Button */}
+            <Link href="/dashboard/notifications">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 rounded-full text-gray-600 hover:bg-transparent hover:text-gray-900 cursor-pointer flex items-center justify-center shrink-0"
+              >
+                <RiNotification3Line className="h-5 w-5" />
+
+                {/* Badge angka dari hook useBadgeCount */}
+                {count > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white ring-2 ring-white animate-in zoom-in duration-150">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
+            {/* 3. Profile DropDown (Hanya muncul di Desktop) */}
+            <div className="hidden md:flex items-center justify-center shrink-0">
+              <ProfileDropDown />
             </div>
           </div>
+        </div>
+      </header>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleResetFilter}
-              className="mr-auto text-muted-foreground hover:text-foreground"
-            >
-              Reset
-            </Button>
-            <Button variant="outline" onClick={() => setFilterOpen(false)}>
-              Batal
-            </Button>
-            <Button onClick={applyFilter}>Terapkan</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </header>
+      {/* MOBILE BOTTOM NAVIGATION BAR (Navigasi di Bawah Layar HP) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-md py-2 px-3 md:hidden">
+        <div className="flex items-center justify-around max-w-md mx-auto">
+          {NAV_MOBILE.map((menu) => {
+            const active =
+              menu.href === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname.startsWith(menu.href);
+
+            // Otomatis memilih ikon Solid/Fill saat aktif & Line saat non-aktif
+            const Icon = active ? menu.iconSolid : menu.iconOutline;
+
+            return (
+              <Link
+                key={menu.name}
+                href={menu.href}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-200",
+                  active
+                    ? "text-indigo-600"
+                    : "text-gray-500 hover:text-gray-900",
+                )}
+              >
+                <Icon className="h-6 w-6 shrink-0 transition-transform duration-200 active:scale-90" />
+              </Link>
+            );
+          })}
+
+          {/* Profile DropDown disamakan ukurannya agar sejajar presisi */}
+          <div className="flex h-9 w-9 items-center justify-center shrink-0">
+            <ProfileDropDown />
+          </div>
+        </div>
+      </nav>
+    </>
   );
 }
 
 function NavbarFallback() {
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 h-20 bg-white px-4 sm:px-6 lg:left-64 lg:px-8">
+    <header className="fixed left-0 right-0 top-0 z-40 h-16 bg-white px-4 sm:px-6 lg:px-8">
       <div className="flex h-full items-center" />
     </header>
   );
