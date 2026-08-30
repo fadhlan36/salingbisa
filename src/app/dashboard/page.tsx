@@ -239,7 +239,7 @@ export default async function Dashboard() {
                 High Compatibility Partners
               </h2>
               <p className="text-xs font-medium text-slate-400 mt-0.5">
-                Rekomendasi partner dengan tingkat kecocokan di atas 75%.
+                Rekomendasi partner dengan tingkat kecocokan yang tinggi.
               </p>
             </div>
           </div>
