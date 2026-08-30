@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { AlertCircle, ChevronDown, Loader2, RefreshCw } from "lucide-react";
 import PartnerCard from "@/components/dashboard/partner-card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type PartnerType = {
   id: string;
@@ -131,7 +132,7 @@ export default function Explorer() {
 
   return (
     <section className="w-full md:mx-auto md:max-w-7xl">
-      {/* MOBILE VERSION — Full Width & Center Fitted                  */}
+      {/* MOBILE VERSION — Full Width & Center Fitted */}
       <div
         ref={mobileContainerRef}
         onScroll={(e) => {
@@ -171,7 +172,7 @@ export default function Explorer() {
               {/* Indicator Scroll Down khusus slide pertama */}
               {index === 0 && !hasScrolled && (
                 <div
-                  className="absolute bottom-2 left-0 right-0 z-20 flex flex-col items-center justify-center pointer-events-none animate-bounce transition-opacity duration-300"
+                  className="absolute bottom-11 left-0 right-0 z-20 flex flex-col items-center justify-center pointer-events-none animate-bounce transition-opacity duration-300"
                   style={{ animationDuration: "2s" }}
                 >
                   <span className="rounded-full bg-slate-900/80 dark:bg-slate-900/90 px-3 py-1 text-[10px] font-medium tracking-wider uppercase text-white/90 backdrop-blur-md border border-white/10 shadow-lg">
@@ -265,20 +266,21 @@ export default function Explorer() {
         )}
       </div>
 
-      {/* DESKTOP VERSION — Normal Grid & Scroll                       */}
-      <div className="hidden md:block space-y-8 p-6 lg:p-8">
+      {/* DESKTOP VERSION — Normal Grid & Scroll */}
+      <div className="hidden md:block space-y-8 p-6 lg:p-8 mt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               Find your learning partner
             </h1>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className="text-xs font-medium text-slate-400 mt-0.5">
               People you might match with.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 justify-items-center gap-6 xl:grid-cols-3">
+          {/* Card Data Partners */}
           {partners.map((partner, index) => {
             const delay = (index % 10) * 150;
 
@@ -302,36 +304,82 @@ export default function Explorer() {
             );
           })}
 
-          {!hasMore && !loading && (
-            <div className="flex w-full items-center justify-center [&>div]:w-full [&>div]:max-w-none sm:[&>div]:w-80">
-              <div className="flex h-[480px] w-72 flex-col items-center justify-center space-y-4 rounded-[36px] border-2 border-dashed border-slate-300 bg-slate-50/50 p-8 text-center dark:border-slate-800 dark:bg-slate-900/50 sm:w-80">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-xl font-bold text-indigo-600 dark:bg-indigo-950/50">
-                  ✨
+          {/* Skeleton Loading - Tampil di dalam grid sesuai jumlah item yang dimuat */}
+          {loading &&
+            Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="flex w-full items-center justify-center [&>div]:w-full [&>div]:max-w-none sm:[&>div]:w-80"
+              >
+                <div className="flex h-[480px] w-72 flex-col justify-between rounded-[36px] border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:w-80">
+                  {/* Header / Avatar Skeleton */}
+                  <div className="flex flex-col items-center space-y-3 pt-4">
+                    <Skeleton className="h-24 w-24 rounded-full" />
+                    <Skeleton className="h-5 w-36 rounded-md" />
+                    <Skeleton className="h-3 w-24 rounded-md" />
+                  </div>
+
+                  {/* Content / Badges Skeleton */}
+                  <div className="space-y-4 my-6">
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-20 rounded-md" />
+                      <div className="flex flex-wrap gap-1.5">
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                        <Skeleton className="h-6 w-14 rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-24 rounded-md" />
+                      <div className="flex flex-wrap gap-1.5">
+                        <Skeleton className="h-6 w-18 rounded-full" />
+                        <Skeleton className="h-6 w-12 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer / Button Skeleton */}
+                  <Skeleton className="h-10 w-full rounded-full" />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">
-                    You&apos;ve Reached the End!
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    Haven&apos;t found the right partner yet? Try updating your
-                    search keywords.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    window.scrollTo({ top: 0, behavior: "smooth" })
-                  }
-                  className="rounded-full text-xs"
-                >
-                  Back to Top
-                </Button>
               </div>
-            </div>
-          )}
+            ))}
+
+          {/* End of Content Card */}
+          {!hasMore &&
+            !loading &&
+            partners.length > 0 &&
+            partners.length % 3 !== 0 && (
+              <div className="flex w-full items-center justify-center [&>div]:w-full [&>div]:max-w-none sm:[&>div]:w-80">
+                <div className="flex h-[480px] w-72 flex-col items-center justify-center space-y-4 rounded-[36px] border-2 border-dashed border-slate-300 bg-slate-50/50 p-8 text-center dark:border-slate-800 dark:bg-slate-900/50 sm:w-80">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-xl font-bold text-indigo-600 dark:bg-indigo-950/50">
+                    ✨
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-slate-800 dark:text-slate-200">
+                      You&apos;ve Reached the End!
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Haven&apos;t found the right partner yet? Try updating
+                      your search keywords.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      window.scrollTo({ top: 0, behavior: "smooth" })
+                    }
+                    className="rounded-full text-xs"
+                  >
+                    Back to Top
+                  </Button>
+                </div>
+              </div>
+            )}
         </div>
 
+        {/* Error State */}
         {error && (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <p className="text-sm font-medium text-red-600">{error}</p>
@@ -347,29 +395,22 @@ export default function Explorer() {
           </div>
         )}
 
-        <div className="mt-8 pb-2 pt-4">
-          {loading && (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
-              Loading more partners...
-            </div>
-          )}
-
-          {!hasMore && !loading && partners.length > 0 && (
+        {/* End Divider (Bottom) */}
+        {!hasMore && !loading && partners.length > 0 && (
+          <div className="mt-8 pb-2 pt-4">
             <div className="relative flex items-center justify-center">
-              <div
-                className="absolute inset-0 flex items-center"
-                aria-hidden="true"
-              >
-                <div className="w-full border-t border-slate-200 dark:border-slate-800" />
-              </div>
               <div className="relative flex items-center gap-2 bg-transparent px-4 text-xs text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                <span className="relative flex h-2 w-2">
+                  {/* Ring Animasi Ping */}
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                  {/* Titik Utama */}
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
+                </span>
                 You&apos;ve reached the end of the list
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );
