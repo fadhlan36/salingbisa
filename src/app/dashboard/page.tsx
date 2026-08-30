@@ -300,7 +300,7 @@ export default async function Dashboard() {
             </div>
           ) : (
             <div className="rounded-2xl bg-slate-100 dark:bg-slate-900/60 py-8 text-center text-xs font-medium text-slate-400">
-              Belum ada partner dengan kecocokan di atas 75%.
+              Belum ada partner dengan kecocokan tinggi.
             </div>
           )}
         </div>
