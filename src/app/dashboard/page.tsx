@@ -151,7 +151,7 @@ async function getPartnerRecommendations(
         id: item.id,
         name: item.full_name,
         username: item.username || item.id,
-        avatar: item.avatar_url || "/profile.png",
+        avatar: item.avatar_url || "/profile.jpg",
         match: numericMatch,
         teach: teachSkills,
         learn: learnSkills,
@@ -226,7 +226,7 @@ export default async function Dashboard() {
   const highMatchPartners = partners.filter((partner) => partner.match > 70);
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full mt-6">
       <div className="space-y-10">
         {/* Top Picks Section - 3D Coverflow Carousel, dengan filter skill */}
         <TopPicksSection partners={partners} skills={skills} />

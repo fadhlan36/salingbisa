@@ -64,7 +64,7 @@ export default function Explorer() {
         id: String(item.id),
         name: item.full_name || item.username || "No Name",
         username: String(item.username || item.id).replace(/^@/, ""),
-        avatar: item.avatar_url || "/profile.png",
+        avatar: item.avatar_url || "/profile.jpg",
         match:
           typeof item.match === "string"
             ? parseFloat(item.match) || 0

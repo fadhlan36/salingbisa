@@ -159,7 +159,7 @@ export default function PartnerProfilePage({
         reviewsCount: data.reviews_count ?? 0,
         bioHeadline: data.bio || "Belum ada bio singkat.",
         aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
-        avatar: data.avatar_url || data.avatar || "/profile.png",
+        avatar: data.avatar_url || data.avatar || "/profile.jpg",
         isOnline: data.is_online ?? true,
         isMatched: isMatchedFromQuery || apiMatchedStatus,
         stats: {
