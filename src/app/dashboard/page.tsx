@@ -2,15 +2,7 @@ import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import PartnerCard from "@/components/dashboard/partner-card";
-import CoverflowCarousel from "@/components/dashboard/coverflow-carousel";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import TopPicksSection from "@/components/dashboard/top-picks-section";
 import { verifyToken } from "@/lib/auth";
 
 interface PartnerApiResponse {
@@ -236,31 +228,8 @@ export default async function Dashboard() {
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full">
       <div className="space-y-10">
-        {/* Top Picks Section - 3D Coverflow Carousel */}
-        <div className="space-y-4">
-          <div className="flex items-end justify-between px-1">
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Top Picks For You
-              </h2>
-              <p className="text-xs font-medium text-slate-400 mt-0.5">
-                Partner dengan kecocokan skill tertinggi untukmu.
-              </p>
-            </div>
-          </div>
-
-          {partners.length > 0 ? (
-            <CoverflowCarousel>
-              {partners.map((partner: PartnerItem) => (
-                <PartnerCard key={partner.id} partner={partner} />
-              ))}
-            </CoverflowCarousel>
-          ) : (
-            <div className="rounded-[28px] bg-slate-200/50 dark:bg-slate-900/60 py-12 text-center text-xs font-medium text-slate-400 border-0 ring-0">
-              Belum ada rekomendasi partner yang ditemukan.
-            </div>
-          )}
-        </div>
+        {/* Top Picks Section - 3D Coverflow Carousel, dengan filter skill */}
+        <TopPicksSection partners={partners} skills={skills} />
 
         {/* High Match Partners Grid Section (Match > 75%) */}
         <div className="space-y-4 pt-4">
