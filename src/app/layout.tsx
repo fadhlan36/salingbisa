@@ -1,8 +1,5 @@
-import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/navbar";
-import Sidebar from "@/components/layout/sidebar";
 import { Toaster } from "@/components/ui/sonner"; // 1. Impor Toaster dari Sonner
 
 const poppins = Poppins({
