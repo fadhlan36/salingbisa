@@ -75,7 +75,7 @@ export default function MyPartnersPage() {
               partnerData.avatar_url ||
               partnerData.avatarUrl ||
               partnerData.avatar ||
-              "",
+              "/profile.jpg",
           };
         });
 
@@ -113,45 +113,48 @@ export default function MyPartnersPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-5xl space-y-6 px-4 pb-8 pt-20 sm:px-6 sm:pb-12 sm:pt-24 lg:px-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <section className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 w-full mt-6 pb-28 sm:pb-8 space-y-6">
+      {/* Header & Search Bar Layout */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             My Partners
           </h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            List of users you have successfully matched with.
+          <p className="text-xs font-medium text-slate-400 mt-0.5">
+            Daftar pengguna yang sudah terhubung dan cocok denganmu.
           </p>
         </div>
 
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
-            placeholder="Search name or username..."
+            placeholder="Cari nama atau username..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 focus-visible:ring-blue-600"
+            className="pl-10 h-10 rounded-full border-0 bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.04)] focus-visible:ring-2 focus-visible:ring-[#4f39f6] text-xs font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
           />
         </div>
       </div>
 
       {/* Loading State */}
       {loading && (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Card key={`skeleton-${index}`} className="overflow-hidden">
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-3 w-24" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Card
+              key={`skeleton-${index}`}
+              className="overflow-hidden border-0 shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-[22px] bg-white dark:bg-slate-900"
+            >
+              <CardContent className="flex items-center justify-between p-4 sm:p-5">
+                <div className="flex items-center space-x-3.5">
+                  <Skeleton className="h-11 w-11 rounded-full" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Skeleton className="h-9 w-20" />
-                  <Skeleton className="h-9 w-20" />
+                <div className="flex gap-1.5">
+                  <Skeleton className="h-8 w-16 rounded-full" />
+                  <Skeleton className="h-8 w-16 rounded-full" />
                 </div>
               </CardContent>
             </Card>
@@ -161,15 +164,17 @@ export default function MyPartnersPage() {
 
       {/* Error State */}
       {!loading && error && (
-        <Card className="border-destructive/50 bg-destructive/5 p-6 text-center">
-          <p className="text-sm font-medium text-destructive">{error}</p>
+        <Card className="border-0 shadow-lg rounded-[24px] bg-red-50/50 dark:bg-red-950/20 p-8 text-center">
+          <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+            {error}
+          </p>
           <Button
             variant="outline"
             size="sm"
             onClick={fetchPartners}
-            className="mt-4 gap-2"
+            className="mt-4 gap-2 rounded-full border-red-200 text-red-600 hover:bg-red-100"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3.5 w-3.5" />
             Try Again
           </Button>
         </Card>
@@ -177,23 +182,23 @@ export default function MyPartnersPage() {
 
       {/* Empty State */}
       {!loading && !error && filteredPartners.length === 0 && (
-        <Card className="flex flex-col items-center justify-center p-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-            <Users className="h-8 w-8" />
+        <Card className="flex flex-col items-center justify-center p-12 text-center border-0 shadow-[0_15px_40px_rgba(0,0,0,0.04)] rounded-[28px] bg-white dark:bg-slate-900">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#4f39f6]/10 text-[#4f39f6]">
+            <Users className="h-7 w-7" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-gray-900">
+          <h3 className="mt-4 text-sm font-bold text-slate-900 dark:text-white">
             No Partners Found
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-slate-400 max-w-sm">
             {searchQuery
-              ? "No partners match your search criteria."
-              : "You haven't matched with any partners yet. Start exploring skills in the dashboard!"}
+              ? "Tidak ada partner yang cocok dengan kata kunci pencarianmu."
+              : "Kamu belum terhubung dengan partner manapun. Mulai jelajahi skill dan temukan partner terbaikmu!"}
           </p>
           {searchQuery && (
             <Button
               variant="ghost"
               onClick={() => setSearchQuery("")}
-              className="mt-4 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              className="mt-4 text-xs font-semibold text-[#4f39f6] hover:text-[#432ecb] hover:bg-[#4f39f6]/10 rounded-full px-4"
             >
               Clear Search
             </Button>
@@ -201,58 +206,62 @@ export default function MyPartnersPage() {
         </Card>
       )}
 
-      {/* Partner List */}
+      {/* Partner Grid Horizontal Layout (Max 3 columns) */}
       {!loading && !error && filteredPartners.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {filteredPartners.map((partner, index) => (
             <Card
               key={`partner-${partner.id}-${index}`}
-              className="transition-all duration-200 hover:border-blue-200 hover:shadow-sm"
+              className="border-0 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgba(79,57,246,0.08)] transition-all duration-200 rounded-[20px] bg-white dark:bg-slate-900 overflow-hidden group"
             >
-              <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="h-12 w-12 border border-blue-100">
+              <CardContent className="flex items-center justify-between p-3.5 sm:px-4 sm:py-3.5 gap-2">
+                {/* Info Pengguna */}
+                <div className="flex items-center space-x-3 min-w-0">
+                  <Avatar className="h-11 w-11 border border-slate-100 dark:border-slate-800 shrink-0 group-hover:scale-105 transition-transform duration-200">
                     <AvatarImage
-                      src={partner.avatar_url}
+                      src={partner.avatar_url || "/profile.jpg"}
                       alt={partner.full_name}
+                      className="object-cover"
                     />
-                    <AvatarFallback className="bg-blue-50 text-sm font-bold text-blue-600">
+                    <AvatarFallback className="bg-[#4f39f6]/10 text-xs font-bold text-[#4f39f6]">
                       {getInitials(partner.full_name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <h3 className="font-semibold leading-tight text-gray-900">
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">
                       {partner.full_name}
                     </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="text-[11px] font-medium text-slate-400 truncate">
                       @{partner.username}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex w-full items-center gap-2 border-t border-gray-100 pt-2 sm:w-auto sm:border-t-0 sm:pt-0">
+                {/* Tombol Aksi Minimalis dengan Ikon Terang & Soft */}
+                <div className="flex items-center gap-1.5 shrink-0">
                   <Button
                     asChild
                     size="sm"
-                    className="h-9 flex-1 gap-2 bg-blue-600 px-4 text-white hover:bg-blue-700 sm:flex-none"
+                    className="h-7.5 px-2.5 rounded-full text-[10px] font-medium bg-[#4f39f6]/10 hover:bg-[#4f39f6] text-[#4f39f6] hover:text-white transition-all shadow-none"
                   >
                     <Link href={`/dashboard/messages?userId=${partner.id}`}>
-                      <MessageSquare className="h-4 w-4" />
-                      Chat
+                      {/* Ikon terang bernuansa soft/pastel */}
+                      <MessageSquare className="h-3 w-3 text-[#7c6ff8] group-hover:text-white transition-colors" />
+                      <span className="ml-1">Chat</span>
                     </Link>
                   </Button>
                   <Button
                     asChild
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="h-9 flex-1 gap-2 px-4 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 sm:flex-none"
+                    className="h-7.5 px-2.5 rounded-full text-[10px] font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                   >
-                    {/* Mengirimkan query param isMatched=true ke halaman profile */}
                     <Link
                       href={`/dashboard/profile/${partner.username}?isMatched=true`}
                     >
-                      <User className="h-4 w-4" />
-                      Profile
+                      {/* Ikon terang bernuansa soft/pastel */}
+                      <User className="h-3 w-3 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white transition-colors" />
+                      <span className="ml-1">Profile</span>
                     </Link>
                   </Button>
                 </div>
@@ -261,6 +270,6 @@ export default function MyPartnersPage() {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

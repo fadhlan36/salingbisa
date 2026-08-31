@@ -11,8 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBadgeCount } from "@/app/hooks/useBadgeCount";
 
 interface PendingRequest {
-  matchId: string; // ID dari transaksi match (untuk Accept/Reject)
-  userId: string; // ID dari user yang meminta match
+  matchId: string;
+  userId: string;
   full_name: string;
   username: string;
   avatar_url: string;
@@ -45,7 +45,6 @@ export default function PendingRequestsPage() {
         throw new Error("Failed to accept match");
       }
 
-      // Hapus request yang sudah di-accept dari UI
       setRequests((prev) =>
         prev.filter((request) => request.matchId !== matchId),
       );
@@ -55,7 +54,7 @@ export default function PendingRequestsPage() {
     }
   };
 
-  const rejectRequest = async (matchId: String) => {
+  const rejectRequest = async (matchId: string) => {
     try {
       const response = await fetch(`/api/matches/requests/${matchId}`, {
         method: "DELETE",
@@ -65,16 +64,15 @@ export default function PendingRequestsPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to accept match");
+        throw new Error("Failed to reject match");
       }
 
-      // Hapus request yang sudah di-reject dari UI
       setRequests((prev) =>
         prev.filter((request) => request.matchId !== matchId),
       );
       mutate();
     } catch (error) {
-      console.error("Error accepting match:", error);
+      console.error("Error rejecting match:", error);
     }
   };
 
@@ -89,7 +87,6 @@ export default function PendingRequestsPage() {
 
       const json = await res.json();
 
-      // 1. Ambil array items langsung dari json.data atau json
       let rawItems: any[] = [];
       if (Array.isArray(json.data)) {
         rawItems = json.data;
@@ -99,11 +96,9 @@ export default function PendingRequestsPage() {
         rawItems = json.data.data;
       }
 
-      // 2. Normalisasi data
       const normalizedRequests: PendingRequest[] = rawItems
-        .filter((item) => item && item.sender) // Pastikan item memiliki sender
+        .filter((item) => item && item.sender)
         .map((item: any) => {
-          // Jika sender berbentuk array (jika ada kasus lain), ambil item pertama. Jika object, pakai langsung.
           const senderData = Array.isArray(item.sender)
             ? item.sender[0]
             : item.sender;
@@ -146,35 +141,36 @@ export default function PendingRequestsPage() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl space-y-8 px-4 pb-10 pt-20 sm:px-6">
+    <section className="mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-24 sm:px-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Pending Match Requests
-          </h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            List of users who sent you a match request.
-          </p>
-        </div>
+      <div className="flex flex-col gap-1 px-1">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Pending Match Requests
+        </h1>
+        <p className="text-xs font-medium text-slate-400">
+          Daftar pengguna yang ingin terhubung dan belajar bersama denganmu.
+        </p>
       </div>
 
       {/* Loading State */}
       {loading && (
-        <div className="flex flex-col gap-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Card key={`skeleton-${index}`} className="overflow-hidden">
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Card
+              key={`skeleton-${index}`}
+              className="overflow-hidden border-0 shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-[24px] bg-white dark:bg-slate-900"
+            >
               <CardContent className="flex items-center justify-between p-5">
                 <div className="flex items-center space-x-4">
                   <Skeleton className="h-12 w-12 rounded-full" />
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Skeleton className="h-9 w-24" />
-                  <Skeleton className="h-9 w-24" />
+                  <Skeleton className="h-9 w-20 rounded-full" />
+                  <Skeleton className="h-9 w-20 rounded-full" />
                 </div>
               </CardContent>
             </Card>
@@ -184,15 +180,17 @@ export default function PendingRequestsPage() {
 
       {/* Error State */}
       {!loading && error && (
-        <Card className="border-destructive/50 bg-destructive/5 p-8 text-center">
-          <p className="text-sm font-medium text-destructive">{error}</p>
+        <Card className="border-0 shadow-lg rounded-[24px] bg-red-50/50 dark:bg-red-950/20 p-8 text-center">
+          <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+            {error}
+          </p>
           <Button
             variant="outline"
             size="sm"
             onClick={fetchPendingPartners}
-            className="mt-4 gap-2"
+            className="mt-4 gap-2 rounded-full border-red-200 text-red-600 hover:bg-red-100"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3.5 w-3.5" />
             Try Again
           </Button>
         </Card>
@@ -200,73 +198,73 @@ export default function PendingRequestsPage() {
 
       {/* Empty State */}
       {!loading && !error && requests.length === 0 && (
-        <Card className="flex flex-col items-center justify-center p-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-            <Users className="h-8 w-8" />
+        <Card className="flex flex-col items-center justify-center p-12 text-center border-0 shadow-[0_15px_40px_rgba(0,0,0,0.04)] rounded-[28px] bg-white dark:bg-slate-900">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#4f39f6]/10 text-[#4f39f6]">
+            <Users className="h-7 w-7" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-gray-900">
-            No Requests Found
+          <h3 className="mt-4 text-sm font-bold text-slate-900 dark:text-white">
+            Tidak Ada Permintaan Baru
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            No pending match requests at the moment.
+          <p className="mt-1 text-xs text-slate-400">
+            Belum ada permintaan match yang tertunda saat ini.
           </p>
         </Card>
       )}
 
       {/* Requests List */}
       {!loading && !error && requests.length > 0 && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {requests.map((req) => (
             <Card
               key={`request-${req.matchId}`}
-              className="transition-all duration-200 hover:border-blue-200 hover:shadow-sm"
+              className="border-0 shadow-[0_15px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(79,57,246,0.08)] rounded-[24px] transition-all duration-300 bg-white dark:bg-slate-900 overflow-hidden"
             >
               <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="h-12 w-12 border border-blue-100">
+                <div className="flex items-center space-x-3.5">
+                  <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
                     <AvatarImage src={req.avatar_url} alt={req.full_name} />
-                    <AvatarFallback className="bg-blue-50 text-sm font-bold text-blue-600">
+                    <AvatarFallback className="bg-[#4f39f6]/10 text-xs font-bold text-[#4f39f6]">
                       {getInitials(req.full_name)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold leading-tight text-gray-900">
+                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
                       {req.full_name}
                     </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="text-xs font-medium text-slate-400">
                       @{req.username}
                     </p>
                   </div>
                 </div>
 
-                {/* Action Buttons for Match Request */}
-                <div className="flex w-full items-center gap-2 border-t border-gray-100 pt-3 sm:w-auto sm:border-t-0 sm:pt-0">
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-3 sm:border-t-0 sm:pt-0">
                   <Button
                     asChild
                     variant="outline"
                     size="sm"
-                    className="h-9 flex-1 gap-2 px-3 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 sm:flex-none"
+                    className="h-9 rounded-full px-3.5 text-xs font-semibold border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
                     <Link href={`/dashboard/profile/${req.username}`}>
-                      <User className="h-4 w-4" />
+                      <User className="h-3.5 w-3.5 mr-1.5" />
                       Profile
                     </Link>
                   </Button>
                   <Button
                     size="sm"
-                    className="h-9 flex-1 gap-2 bg-blue-600 px-4 text-white hover:bg-blue-700 sm:flex-none"
+                    className="h-9 rounded-full px-4 text-xs font-semibold bg-[#4f39f6] hover:bg-[#432ecb] text-white shadow-md shadow-[#4f39f6]/20 transition-all"
                     onClick={() => acceptRequest(req.matchId)}
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="h-3.5 w-3.5 mr-1.5" />
                     Accept
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 flex-1 gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 sm:flex-none"
+                    className="h-9 rounded-full px-4 text-xs font-semibold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
                     onClick={() => rejectRequest(req.matchId)}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5 mr-1.5" />
                     Reject
                   </Button>
                 </div>
