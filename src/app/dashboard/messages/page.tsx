@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
+  ArrowLeft,
   Search,
   Info,
   Smile,
@@ -32,11 +33,11 @@ interface Conversation {
   status: "Online" | "Offline";
   lastMessage: string;
   time: string;
+  lastActivityAt: string;
   unreadCount?: number;
   messages: Message[];
 }
 
-// Bentuk mentah dari response API GET /api/conversations
 interface ConversationApiItem {
   id: string;
   partner: {
@@ -51,7 +52,6 @@ interface ConversationApiItem {
   } | null;
 }
 
-// Bentuk mentah dari response API GET /api/conversations/:matchId/messages
 interface MessageApiItem {
   id: string;
   sender_id: string;
@@ -60,7 +60,6 @@ interface MessageApiItem {
   display_time: string;
 }
 
-// Bentuk mentah data dari response POST /api/conversations/:matchId/messages
 interface SendMessageApiData {
   id: string;
   content: string;
@@ -68,8 +67,6 @@ interface SendMessageApiData {
   display_time: string;
 }
 
-// Bentuk payload broadcast realtime dari server (bukan row Postgres mentah,
-// karena kita pakai Broadcast, bukan postgres_changes)
 interface RealtimeMessagePayload {
   id: string;
   match_id: string;
@@ -79,7 +76,6 @@ interface RealtimeMessagePayload {
   display_time: string;
 }
 
-// Format waktu relatif sederhana untuk ditampilkan di list chat
 function formatConversationTime(dateString?: string): string {
   if (!dateString) return "";
 
@@ -109,6 +105,36 @@ export default function MessagesPage() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
 
+  const [viewingChat, setViewingChat] = useState(false);
+
+  const activeIdRef = useRef(activeId);
+  const viewingChatRef = useRef(viewingChat);
+  const isDesktopRef = useRef(false);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  useEffect(() => {
+    viewingChatRef.current = viewingChat;
+  }, [viewingChat]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px)");
+    const update = () => {
+      isDesktopRef.current = mql.matches;
+    };
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
+  const isConversationVisible = (matchId: string) => {
+    if (matchId !== activeIdRef.current) return false;
+    if (isDesktopRef.current) return true;
+    return viewingChatRef.current;
+  };
+
   const fetchConversations = async () => {
     setLoading(true);
     setError(null);
@@ -127,7 +153,6 @@ export default function MessagesPage() {
 
       const json = await res.json();
 
-      // Response berformat array: [{ message, data }, { status }]
       const firstItem = Array.isArray(json)
         ? json.find((item) => item?.data !== undefined)
         : json;
@@ -138,10 +163,11 @@ export default function MessagesPage() {
         partnerId: item.partner?.id || "",
         name: item.partner?.full_name || item.partner?.username || "Unknown",
         avatar: item.partner?.avatar_url || "/profile.jpg",
-        // TODO: API belum mengirim status online/offline partner, sementara default "Offline"
         status: "Offline",
         lastMessage: item.last_message?.content || "Belum ada pesan",
         time: formatConversationTime(item.last_message?.created_at),
+        lastActivityAt: item.last_message?.created_at || "",
+        unreadCount: 0,
         messages: [],
       }));
 
@@ -160,7 +186,6 @@ export default function MessagesPage() {
     }
   };
 
-  // Fetch history pesan penuh untuk 1 percakapan berdasarkan matchId
   const fetchMessages = useCallback(
     async (matchId: string, partnerId: string) => {
       setMessagesLoading(true);
@@ -175,7 +200,6 @@ export default function MessagesPage() {
 
         const json = await res.json();
 
-        // Response berformat array: [{ message, data }, { status }]
         const firstItem = Array.isArray(json)
           ? json.find((item) => item?.data !== undefined)
           : json;
@@ -183,8 +207,6 @@ export default function MessagesPage() {
 
         const normalizedMessages: Message[] = rawMessages.map((msg) => ({
           id: msg.id,
-          // Bandingkan sender_id dengan partnerId: jika sama, berarti pesan dari
-          // partner; jika beda, berarti pesan dari kita sendiri.
           senderId: msg.sender_id === partnerId ? partnerId : "me",
           text: msg.content,
           timestamp: msg.display_time,
@@ -213,7 +235,6 @@ export default function MessagesPage() {
     fetchConversations();
   }, []);
 
-  // Fetch history pesan setiap kali percakapan aktif berubah
   useEffect(() => {
     if (!activeId) return;
 
@@ -221,94 +242,109 @@ export default function MessagesPage() {
     if (!conv) return;
 
     fetchMessages(activeId, conv.partnerId);
-    // Sengaja tidak memasukkan `conversations` ke dependency array supaya
-    // tidak fetch ulang setiap kali state conversations berubah (misal saat
-    // mengirim pesan baru).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, fetchMessages]);
 
-  // Subscribe realtime ke pesan baru untuk percakapan yang sedang aktif.
-  // Pakai Broadcast (bukan postgres_changes) karena browser client Supabase
-  // di sini tidak terautentikasi lewat Supabase Auth (auth custom JWT
-  // sendiri), sehingga RLS akan selalu memblokir postgres_changes.
-  // Subscribe realtime ke pesan baru untuk percakapan yang sedang aktif.
-  // Pakai Broadcast (bukan postgres_changes) karena browser client Supabase
-  // di sini tidak terautentikasi lewat Supabase Auth (auth custom JWT
-  // sendiri), sehingga RLS akan selalu memblokir postgres_changes.
+  const conversationIds = useMemo(
+    () => conversations.map((c) => c.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conversations.map((c) => c.id).join(",")],
+  );
+
   useEffect(() => {
-    if (!activeId) return;
+    if (conversationIds.length === 0) return;
 
-    const channel = supabase
-      .channel(`messages-${activeId}`)
-      .on("broadcast", { event: "new_message" }, (payload) => {
-        const newMessage = payload.payload as RealtimeMessagePayload;
+    const channels = conversationIds.map((matchId) =>
+      supabase
+        .channel(`messages-${matchId}`)
+        .on("broadcast", { event: "new_message" }, (payload) => {
+          const newMessage = payload.payload as RealtimeMessagePayload;
+          const visible = isConversationVisible(matchId);
 
-        setConversations((prev) =>
-          prev.map((conv) => {
-            if (conv.id !== activeId) return conv;
+          setConversations((prev) =>
+            prev.map((conv) => {
+              if (conv.id !== matchId) return conv;
 
-            // Kalau pesan dengan id ini sudah ada di state, abaikan
-            // (mencegah duplikat kalau broadcast datang setelah response POST).
-            const alreadyExists = conv.messages.some(
-              (m) => m.id === newMessage.id,
-            );
-            if (alreadyExists) return conv;
+              const isFromPartner = newMessage.sender_id === conv.partnerId;
 
-            const isFromPartner = newMessage.sender_id === conv.partnerId;
+              if (!isFromPartner && visible) {
+                const pendingIndex = conv.messages.findIndex(
+                  (m) =>
+                    m.id.startsWith("temp-") && m.text === newMessage.content,
+                );
 
-            if (!isFromPartner) {
-              // Broadcast ini adalah pesan yang kita kirim sendiri. Karena
-              // kita juga subscribe ke channel kita sendiri, broadcast bisa
-              // datang SEBELUM response POST selesai. Kalau ada pesan optimis
-              // (id sementara "temp-...") dengan teks yang sama, ganti id-nya
-              // saja supaya tidak duplikat saat response POST datang belakangan.
-              const pendingIndex = conv.messages.findIndex(
-                (m) =>
-                  m.id.startsWith("temp-") && m.text === newMessage.content,
+                if (pendingIndex !== -1) {
+                  const updatedMessages = [...conv.messages];
+                  updatedMessages[pendingIndex] = {
+                    id: newMessage.id,
+                    senderId: "me",
+                    text: newMessage.content,
+                    timestamp: newMessage.display_time,
+                  };
+
+                  return {
+                    ...conv,
+                    lastMessage: newMessage.content,
+                    time: newMessage.display_time,
+                    lastActivityAt: newMessage.created_at,
+                    messages: updatedMessages,
+                  };
+                }
+              }
+
+              const alreadyExists = conv.messages.some(
+                (m) => m.id === newMessage.id,
               );
 
-              if (pendingIndex !== -1) {
-                const updatedMessages = [...conv.messages];
-                updatedMessages[pendingIndex] = {
-                  id: newMessage.id,
-                  senderId: "me",
-                  text: newMessage.content,
-                  timestamp: newMessage.display_time,
-                };
+              const updatedMessages =
+                visible && !alreadyExists
+                  ? [
+                      ...conv.messages,
+                      {
+                        id: newMessage.id,
+                        senderId: isFromPartner ? conv.partnerId : "me",
+                        text: newMessage.content,
+                        timestamp: newMessage.display_time,
+                      },
+                    ]
+                  : conv.messages;
 
-                return {
-                  ...conv,
-                  lastMessage: newMessage.content,
-                  time: newMessage.display_time,
-                  messages: updatedMessages,
-                };
-              }
-            }
-
-            const incomingMessage: Message = {
-              id: newMessage.id,
-              senderId: isFromPartner ? conv.partnerId : "me",
-              text: newMessage.content,
-              timestamp: newMessage.display_time,
-            };
-
-            return {
-              ...conv,
-              lastMessage: newMessage.content,
-              time: newMessage.display_time,
-              messages: [...conv.messages, incomingMessage],
-            };
-          }),
-        );
-      })
-      .subscribe();
+              return {
+                ...conv,
+                lastMessage: newMessage.content,
+                time: newMessage.display_time,
+                lastActivityAt: newMessage.created_at,
+                unreadCount:
+                  isFromPartner && !visible
+                    ? (conv.unreadCount || 0) + 1
+                    : conv.unreadCount || 0,
+                messages: updatedMessages,
+              };
+            }),
+          );
+        })
+        .subscribe(),
+    );
 
     return () => {
-      supabase.removeChannel(channel);
+      channels.forEach((channel) => supabase.removeChannel(channel));
     };
-  }, [activeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationIds]);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
+
+  const handleSelectConversation = (id: string) => {
+    setActiveId(id);
+    setViewingChat(true);
+    setConversations((prev) =>
+      prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv)),
+    );
+  };
+
+  const handleBackToList = () => {
+    setViewingChat(false);
+  };
 
   const handleSendMessage = async () => {
     const text = inputText.trim();
@@ -317,8 +353,8 @@ export default function MessagesPage() {
     setIsSending(true);
     setInputText("");
 
-    // Optimistic update: langsung tampilkan pesan sementara sebelum response API datang
     const tempId = `temp-${Date.now()}`;
+    const nowIso = new Date().toISOString();
     const optimisticMessage: Message = {
       id: tempId,
       senderId: "me",
@@ -336,6 +372,7 @@ export default function MessagesPage() {
               ...conv,
               lastMessage: text,
               time: optimisticMessage.timestamp,
+              lastActivityAt: nowIso,
               messages: [...conv.messages, optimisticMessage],
             }
           : conv,
@@ -355,14 +392,12 @@ export default function MessagesPage() {
 
       const json = await res.json();
 
-      // Response berformat array: [{ message, data }, { status }]
       const firstItem = Array.isArray(json)
         ? json.find((item) => item?.data !== undefined)
         : json;
       const sentMessage: SendMessageApiData | undefined = firstItem?.data;
 
       if (sentMessage) {
-        // Ganti pesan optimis dengan data asli dari server (id, timestamp resmi)
         setConversations((prev) =>
           prev.map((conv) =>
             conv.id === activeId
@@ -370,6 +405,7 @@ export default function MessagesPage() {
                   ...conv,
                   lastMessage: sentMessage.content,
                   time: sentMessage.display_time,
+                  lastActivityAt: sentMessage.created_at,
                   messages: conv.messages.map((msg) =>
                     msg.id === tempId
                       ? {
@@ -389,7 +425,6 @@ export default function MessagesPage() {
       console.error("Error sending message:", err);
       toast.error("Gagal mengirim pesan. Silakan coba lagi.");
 
-      // Rollback: hapus pesan optimis yang gagal terkirim
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === activeId
@@ -409,10 +444,20 @@ export default function MessagesPage() {
     c.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const sortedConversations = [...filteredConversations].sort((a, b) => {
+    const aTime = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
+    const bTime = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
+    return bTime - aTime;
+  });
+
   return (
-    <div className="fixed inset-x-0 bottom-0 top-20 z-10 flex bg-white lg:left-64">
+    <div className="fixed inset-x-0 top-[60px] bottom-[52px] z-10 flex bg-white md:bottom-0">
       {/* Sidebar Kiri: Daftar Chat */}
-      <div className="flex w-full shrink-0 flex-col border-r bg-slate-50/50 md:w-80 lg:w-96">
+      <div
+        className={`${
+          viewingChat ? "hidden" : "flex"
+        } w-full shrink-0 flex-col border-r bg-slate-50/50 md:flex md:w-80 lg:w-96`}
+      >
         <div className="shrink-0 border-b p-4 space-y-3">
           <h1 className="text-xl font-bold text-slate-800">Messages</h1>
           <div className="relative">
@@ -426,7 +471,6 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Loading State */}
         {loading && (
           <div className="flex flex-1 items-center justify-center gap-2 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -434,7 +478,6 @@ export default function MessagesPage() {
           </div>
         )}
 
-        {/* Error State */}
         {!loading && error && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
             <p className="text-sm text-red-600">{error}</p>
@@ -450,22 +493,20 @@ export default function MessagesPage() {
           </div>
         )}
 
-        {/* Empty State */}
-        {!loading && !error && filteredConversations.length === 0 && (
+        {!loading && !error && sortedConversations.length === 0 && (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-400">
             Belum ada percakapan.
           </div>
         )}
 
-        {/* List Percakapan */}
-        {!loading && !error && filteredConversations.length > 0 && (
+        {!loading && !error && sortedConversations.length > 0 && (
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
-            {filteredConversations.map((item) => {
+            {sortedConversations.map((item) => {
               const isActive = item.id === activeId;
               return (
                 <div
                   key={item.id}
-                  onClick={() => setActiveId(item.id)}
+                  onClick={() => handleSelectConversation(item.id)}
                   className={`flex cursor-pointer items-center gap-3.5 rounded-2xl p-3.5 transition-all ${
                     isActive
                       ? "border border-indigo-100/60 bg-indigo-50/80 shadow-sm"
@@ -507,7 +548,7 @@ export default function MessagesPage() {
                       <p className="truncate text-xs text-slate-500">
                         {item.lastMessage}
                       </p>
-                      {item.unreadCount && (
+                      {!!item.unreadCount && (
                         <span className="flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">
                           {item.unreadCount}
                         </span>
@@ -523,10 +564,22 @@ export default function MessagesPage() {
 
       {/* Area Chat Utama */}
       {activeConversation ? (
-        <div className="hidden min-w-0 flex-1 flex-col bg-white md:flex">
-          {/* Header Chat */}
+        <div
+          className={`${
+            viewingChat ? "flex" : "hidden"
+          } min-w-0 flex-1 flex-col bg-white md:flex`}
+        >
           <div className="flex h-16 shrink-0 items-center justify-between border-b px-6">
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleBackToList}
+                className="mr-1 shrink-0 text-slate-500 hover:text-slate-700 md:hidden"
+                aria-label="Kembali ke daftar percakapan"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+
               <div className="relative">
                 <Avatar className="h-10 w-10 border">
                   <AvatarImage
@@ -558,7 +611,6 @@ export default function MessagesPage() {
             </Button>
           </div>
 
-          {/* Messages Body */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messagesLoading && (
               <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-400">
@@ -645,7 +697,6 @@ export default function MessagesPage() {
               })}
           </div>
 
-          {/* Chat Input */}
           <div className="shrink-0 border-t bg-white p-4">
             <form
               onSubmit={(e) => {
