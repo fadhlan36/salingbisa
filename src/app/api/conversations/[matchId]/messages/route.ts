@@ -20,13 +20,29 @@ export const formattedDate = (waktu: string): string => {
   const date = new Date(waktu);
   const now = new Date();
 
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const timeZone = "Asia/Jakarta";
 
-  const messageDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
+  const getDateParts = (value: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    }).formatToParts(value);
+
+    return {
+      year: Number(parts.find((part) => part.type === "year")?.value),
+      month: Number(parts.find((part) => part.type === "month")?.value) - 1,
+      day: Number(parts.find((part) => part.type === "day")?.value),
+    };
+  };
+
+  const nowParts = getDateParts(now);
+  const dateParts = getDateParts(date);
+
+  const today = new Date(nowParts.year, nowParts.month, nowParts.day);
+
+  const messageDate = new Date(dateParts.year, dateParts.month, dateParts.day);
 
   const diffDays = Math.round(
     (today.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24),
@@ -34,6 +50,7 @@ export const formattedDate = (waktu: string): string => {
 
   if (diffDays === 0) {
     return new Intl.DateTimeFormat("id-ID", {
+      timeZone,
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -46,11 +63,13 @@ export const formattedDate = (waktu: string): string => {
 
   if (diffDays >= 2 && diffDays <= 6) {
     return new Intl.DateTimeFormat("id-ID", {
+      timeZone,
       weekday: "long",
     }).format(date);
   }
 
   return new Intl.DateTimeFormat("id-ID", {
+    timeZone,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
