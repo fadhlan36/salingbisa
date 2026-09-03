@@ -16,7 +16,7 @@ type MessageResponse = {
   display_time: string;
 };
 
-const formattedDate = (waktu: string) => {
+export const formattedDate = (waktu: string): string => {
   const date = new Date(waktu);
   const now = new Date();
 
@@ -28,10 +28,10 @@ const formattedDate = (waktu: string) => {
     date.getDate(),
   );
 
-  const diffTime = today.getTime() - messageDate.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(
+    (today.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
-  // Hari ini
   if (diffDays === 0) {
     return new Intl.DateTimeFormat("id-ID", {
       hour: "2-digit",
@@ -40,19 +40,16 @@ const formattedDate = (waktu: string) => {
     }).format(date);
   }
 
-  // Kemarin
   if (diffDays === 1) {
     return "Kemarin";
   }
 
-  // Dalam 7 hari terakhir
-  if (diffDays > 1 && diffDays < 7) {
+  if (diffDays >= 2 && diffDays <= 6) {
     return new Intl.DateTimeFormat("id-ID", {
       weekday: "long",
     }).format(date);
   }
 
-  // Lebih dari 7 hari
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "2-digit",
@@ -76,6 +73,7 @@ export async function GET(request: NextRequest, { params }: Props) {
     );
   }
 
+  // Validasi match
   const { data: match, error: errorMatch } = await supabaseAdmin
     .from("matches")
     .select("id")
@@ -91,12 +89,27 @@ export async function GET(request: NextRequest, { params }: Props) {
     );
   }
 
-  // Ambil semua message dari match tersebut
-  const { data: messages, error: errorMessage } = await supabaseAdmin
+  const { searchParams } = new URL(request.url);
+
+  const before = searchParams.get("before");
+
+  const limit = 20;
+
+  let query = supabaseAdmin
     .from("messages")
     .select("id, sender_id, content, created_at")
     .eq("match_id", matchId)
-    .order("created_at", { ascending: true });
+    .order("created_at", {
+      ascending: false,
+    })
+    .limit(limit);
+
+  // Ambil pesan yang lebih lama
+  if (before) {
+    query = query.lt("created_at", before);
+  }
+
+  const { data: messages, error: errorMessage } = await query;
 
   if (errorMessage) {
     return NextResponse.json(
@@ -105,7 +118,10 @@ export async function GET(request: NextRequest, { params }: Props) {
     );
   }
 
-  const response: MessageResponse[] = (messages ?? []).map((message) => ({
+  // Balik lagi agar frontend menerima urutan lama → baru
+  const sortedMessages = (messages ?? []).reverse();
+
+  const response: MessageResponse[] = sortedMessages.map((message) => ({
     id: message.id,
     sender_id: message.sender_id,
     content: message.content,
@@ -117,6 +133,12 @@ export async function GET(request: NextRequest, { params }: Props) {
     {
       message: "Success get messages",
       data: response,
+
+      pagination: {
+        hasMore: messages?.length === limit,
+
+        nextCursor: response.length > 0 ? response[0].created_at : null,
+      },
     },
     { status: 200 },
   );
