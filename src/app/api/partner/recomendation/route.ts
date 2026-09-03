@@ -111,12 +111,13 @@ export async function GET(request: NextRequest) {
       username: partner.username,
       teachSkill: partner.teach,
       learnSkill: partner.learn,
-
       match: calculateMatch(currentUserSkill, {
         teach: partner.teach,
         learn: partner.learn,
       }),
-    }));
+    }))
+    .sort((a, b) => Number.parseInt(b.match) - Number.parseInt(a.match))
+    .slice(0, 10);
 
   return NextResponse.json(response);
 }
