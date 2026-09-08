@@ -148,7 +148,7 @@ async function getUserProfile(
           reviewsCount: data.reviews_count ?? 0,
           bioHeadline: data.bio || "Belum ada bio singkat.",
           aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
-          avatar: data.avatar_url || "/profile.jpg",
+          avatar: data.avatar_url || (data as any).avatar || "/profile.jpg",
           isOnline: data.is_online ?? true,
           stats: {
             learningPartners: data.stats?.learning_partners ?? 0,
@@ -277,6 +277,7 @@ export default async function ProfilePage() {
               location: user.location,
               bioHeadline: user.bioHeadline,
               aboutMe: user.aboutMe,
+              avatarUrl: user.avatar,
               canHelpWith: user.canHelpWith.map((item) => item.name),
               wantToLearn: user.wantToLearn.map((item) => item.name),
             }}
