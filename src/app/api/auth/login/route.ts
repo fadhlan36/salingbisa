@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
   const { data: user, error } = await supabaseAdmin
     .from("users")
-    .select("id, email, password_hash, full_name")
+    .select("id, email, password_hash, full_name, avatar_url")
     .eq("email", email)
     .single();
 
@@ -32,10 +32,16 @@ export async function POST(request: NextRequest) {
     userId: user.id,
     email: user.email,
     full_name: user.full_name,
+    avatar_url: user.avatar_url,
   });
 
   const response = NextResponse.json({
-    user: { id: user.id, email: user.email, full_name: user.full_name },
+    user: {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name,
+      avatar: user.avatar_url,
+    },
   });
   response.cookies.set("token", token, {
     httpOnly: true,
