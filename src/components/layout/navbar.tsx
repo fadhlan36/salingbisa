@@ -62,7 +62,11 @@ const NAV_MENUS = [
   { name: "Messages", href: "/dashboard/messages", icon: RiMessage3Line },
 ];
 
-function NavbarContent() {
+interface NavbarContentProps {
+  avatarUrl?: string | null;
+}
+
+function NavbarContent({ avatarUrl }: NavbarContentProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -259,15 +263,15 @@ function NavbarContent() {
               </Button>
             </Link>
 
-            {/* 3. Profile DropDown (Hanya muncul di Desktop) */}
+            {/* 3. Profile DropDown (Desktop) */}
             <div className="hidden md:flex items-center justify-center shrink-0">
-              <ProfileDropDown />
+              <ProfileDropDown avatarUrl={avatarUrl} />
             </div>
           </div>
         </div>
       </header>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (Navigasi di Bawah Layar HP) */}
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-md py-2 px-3 md:hidden">
         <div className="flex items-center justify-around max-w-md mx-auto">
           {NAV_MOBILE.map((menu) => {
@@ -276,7 +280,6 @@ function NavbarContent() {
                 ? pathname === "/dashboard"
                 : pathname.startsWith(menu.href);
 
-            // Otomatis memilih ikon Solid/Fill saat aktif & Line saat non-aktif
             const Icon = active ? menu.iconSolid : menu.iconOutline;
 
             return (
@@ -295,9 +298,9 @@ function NavbarContent() {
             );
           })}
 
-          {/* Profile DropDown disamakan ukurannya agar sejajar presisi */}
+          {/* Profile DropDown (Mobile) */}
           <div className="flex h-9 w-9 items-center justify-center shrink-0">
-            <ProfileDropDown />
+            <ProfileDropDown avatarUrl={avatarUrl} />
           </div>
         </div>
       </nav>
@@ -313,10 +316,14 @@ function NavbarFallback() {
   );
 }
 
-export default function Navbar() {
+interface NavbarProps {
+  avatarUrl?: string | null;
+}
+
+export default function Navbar({ avatarUrl }: NavbarProps) {
   return (
     <Suspense fallback={<NavbarFallback />}>
-      <NavbarContent />
+      <NavbarContent avatarUrl={avatarUrl} />
     </Suspense>
   );
 }

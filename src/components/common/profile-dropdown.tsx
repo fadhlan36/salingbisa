@@ -14,33 +14,43 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export function ProfileDropDown() {
+interface ProfileDropDownProps {
+  avatarUrl?: string | null;
+}
+
+export function ProfileDropDown({ avatarUrl }: ProfileDropDownProps) {
   const router = useRouter();
+
+  // Validasi: Jika avatarUrl null, undefined, atau string kosong, gunakan /king.jpg
+  const userAvatar =
+    avatarUrl && avatarUrl.trim() !== "" ? avatarUrl : "/king.png";
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-
+      const res = await fetch("/api/auth/logout", { method: "POST" });
       if (res.ok) {
         router.push("/auth/login");
         router.refresh();
-      } else {
-        console.error("Gagal melakukan logout");
       }
     } catch (error) {
-      console.error("Terjadi kesalahan saat logout:", error);
+      console.error("Logout error:", error);
     }
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="relative rounded-full size-8">
+        <button className="relative rounded-full size-8 outline-none">
           <Avatar className="size-full cursor-pointer">
-            <AvatarImage src="/king.png" alt="Profile" />
-            <AvatarFallback>U</AvatarFallback>
+            <AvatarImage
+              src={userAvatar}
+              alt="Profile Avatar"
+              className="object-cover"
+            />
+            {/* Fallback teks jika /king.jpg atau link Cloudinary rusak */}
+            <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">
+              U
+            </AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
