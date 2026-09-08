@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: Props) {
   const { data, error } = await supabaseAdmin
     .from("users")
     .select(
-      "id, email, full_name, username, location, about_me, bio, user_skills(type, skills(id,name))",
+      "id, email, full_name, username, location, about_me, bio, avatar_url, user_skills(type, skills(id,name))",
     )
     .eq("username", username)
     .single();
