@@ -3,16 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
-export async function updateProfile(formData: {
-    full_name: string;
-    email: string;
-    username: string;
-    location: string;
-    bio: string;
-    about_me: string;
-    teachSkill: string[];
-    learnSkill: string[];
-}) {
+export async function updateProfile(formData: FormData) {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
@@ -21,18 +12,34 @@ export async function updateProfile(formData: {
     }
 
     try {
-        const payload = {
-            full_name: formData.full_name,
-            email: formData.email,
-            username: formData.username.replace(/^@/, ""),
-            location: formData.location,
-            bio: formData.bio,
-            about_me: formData.about_me,
-            teachSkill: formData.teachSkill || [],
-            learnSkill: formData.learnSkill || [],
-        };
+        // Ambil data teks satu per satu dari FormData asal
+        const fullName = formData.get("full_name") as string || "";
+        const email = formData.get("email") as string || "";
+        const usernameRaw = formData.get("username") as string || "";
+        const cleanUsername = usernameRaw.replace(/^@/, "");
+        const location = formData.get("location") as string || "";
+        const bio = formData.get("bio") as string || "";
+        const aboutMe = formData.get("about_me") as string || "";
+        const teachSkill = formData.get("teachSkill") as string || "[]";
+        const learnSkill = formData.get("learnSkill") as string || "[]";
+        const avatarFile = formData.get("avatar") as File | null;
 
-        // Ambil host/domain aktif secara dinamis (mencegah error jika port bukan 3000)
+        // Buat instance FormData baru khusus untuk dikirim via fetch ke API Route
+        const dataToSend = new FormData();
+        dataToSend.append("full_name", fullName);
+        dataToSend.append("email", email);
+        dataToSend.append("username", cleanUsername);
+        dataToSend.append("location", location);
+        dataToSend.append("bio", bio);
+        dataToSend.append("about_me", aboutMe);
+        dataToSend.append("teachSkill", teachSkill);
+        dataToSend.append("learnSkill", learnSkill);
+
+        // Pastikan file avatar benar-benar dilampirkan ulang jika ada
+        if (avatarFile && avatarFile.size > 0) {
+            dataToSend.append("avatar", avatarFile);
+        }
+
         const headerList = await headers();
         const host = headerList.get("host") || "localhost:3000";
         const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
@@ -41,10 +48,9 @@ export async function updateProfile(formData: {
         const res = await fetch(apiUrl, {
             method: "PATCH",
             headers: {
-                "Content-Type": "application/json",
                 Cookie: `token=${token}`,
             },
-            body: JSON.stringify(payload),
+            body: dataToSend,
         });
 
         const result = await res.json();

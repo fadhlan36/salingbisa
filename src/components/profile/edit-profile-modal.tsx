@@ -1,45 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Camera, Loader2, X, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Pencil, X, Trash2 } from "lucide-react";
-import { updateProfile } from "@/lib/actions/profile";
 
-export interface ProfileFormData {
+interface SkillItemInput {
   name: string;
-  email: string;
-  username: string;
-  location: string;
-  bioHeadline: string;
-  aboutMe: string;
-  canHelpWith?: any[];
-  wantToLearn?: any[];
+  icon?: string;
+}
+
+interface DatabaseSkill {
+  id: string;
+  skill_name: string;
+  skillCount: number;
 }
 
 interface EditProfileModalProps {
-  initialData: ProfileFormData;
+  initialData: {
+    name: string;
+    email: string;
+    username: string;
+    location: string;
+    bioHeadline: string;
+    aboutMe: string;
+    avatarUrl?: string;
+    canHelpWith: (string | SkillItemInput)[];
+    wantToLearn: (string | SkillItemInput)[];
+  };
 }
-
-const AVAILABLE_SKILLS = [
-  "Laravel",
-  "React.js",
-  "Next.js",
-  "UI/UX",
-  "Marketing",
-  "Investasi",
-  "Python",
-  "Node.js",
-];
-
-// Helper parser untuk mengkonversi object/string ke array string bersih
-const parseSkillNames = (skills?: any[]): string[] => {
-  if (!skills || !Array.isArray(skills)) return [];
-  return skills
-    .map((s) =>
-      typeof s === "object" ? s.skill_name || s.name || s.title || "" : s,
-    )
-    .filter(Boolean);
-};
 
 export default function EditProfileModal({
   initialData,
@@ -47,347 +35,408 @@ export default function EditProfileModal({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
-  const [formData, setFormData] = useState<ProfileFormData>({
-    name: initialData.name || "",
-    email: initialData.email || "",
-    username: initialData.username || "",
-    location: initialData.location || "",
-    bioHeadline: initialData.bioHeadline || "",
-    aboutMe: initialData.aboutMe || "",
-    canHelpWith: parseSkillNames(initialData.canHelpWith),
-    wantToLearn: parseSkillNames(initialData.wantToLearn),
-  });
+  const extractSkillNames = (skills: (string | SkillItemInput)[]) => {
+    return skills
+      .map((item) => (typeof item === "string" ? item : item.name))
+      .filter((name): name is string => Boolean(name));
+  };
 
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [name, setName] = useState(initialData.name);
+  const [username, setUsername] = useState(initialData.username);
+  const [location, setLocation] = useState(initialData.location);
+  const [bioHeadline, setBioHeadline] = useState(initialData.bioHeadline);
+  const [aboutMe, setAboutMe] = useState(initialData.aboutMe);
 
-  const handleOpenModal = () => {
-    setFormData({
-      name: initialData.name || "",
-      email: initialData.email || "",
-      username: initialData.username || "",
-      location: initialData.location || "",
-      bioHeadline: initialData.bioHeadline || "",
-      aboutMe: initialData.aboutMe || "",
-      canHelpWith: parseSkillNames(initialData.canHelpWith),
-      wantToLearn: parseSkillNames(initialData.wantToLearn),
-    });
-    setErrorMessage("");
-    setIsOpen(true);
+  const [canHelpWith, setCanHelpWith] = useState<string[]>(
+    extractSkillNames(initialData.canHelpWith),
+  );
+  const [wantToLearn, setWantToLearn] = useState<string[]>(
+    extractSkillNames(initialData.wantToLearn),
+  );
+
+  const [availableSkills, setAvailableSkills] = useState<DatabaseSkill[]>([]);
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false);
+
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>(
+    initialData.avatarUrl || "",
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialData.name);
+      setUsername(initialData.username);
+      setLocation(initialData.location);
+      setBioHeadline(initialData.bioHeadline);
+      setAboutMe(initialData.aboutMe);
+      setCanHelpWith(extractSkillNames(initialData.canHelpWith));
+      setWantToLearn(extractSkillNames(initialData.wantToLearn));
+      setAvatarPreview(initialData.avatarUrl || "");
+      setAvatarFile(null);
+
+      const fetchSkills = async () => {
+        setIsLoadingSkills(true);
+        try {
+          const res = await fetch("/api/skill");
+          if (res.ok) {
+            const result = await res.json();
+
+            let rawList = [];
+            if (Array.isArray(result)) {
+              rawList = result;
+            } else if (result && Array.isArray(result.data)) {
+              rawList = result.data;
+            } else if (result && Array.isArray(result.skills)) {
+              rawList = result.skills;
+            }
+
+            const formattedSkills = rawList.map((item: any, idx: number) => ({
+              id: item.id || item._id || String(idx),
+              skill_name:
+                item.skill_name || item.name || item.title || String(item),
+              skillCount: item.skillCount || item.count || 0,
+            }));
+
+            setAvailableSkills(formattedSkills);
+          }
+        } catch (error) {
+          console.error("Gagal mengambil list skill:", error);
+        } finally {
+          setIsLoadingSkills(false);
+        }
+      };
+
+      fetchSkills();
+    }
+  }, [isOpen, initialData]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setErrorMessage("");
-
+    setIsSubmitting(true);
     try {
-      const teachSkill = parseSkillNames(formData.canHelpWith);
-      const learnSkill = parseSkillNames(formData.wantToLearn);
+      const formData = new FormData();
+      formData.append("full_name", name);
+      formData.append("email", initialData.email);
+      formData.append("username", username);
+      formData.append("location", location);
+      formData.append("about_me", aboutMe);
+      formData.append("bio", bioHeadline);
 
-      const payload = {
-        full_name: formData.name,
-        email: formData.email,
-        username: formData.username,
-        location: formData.location,
-        bio: formData.bioHeadline,
-        about_me: formData.aboutMe,
-        teachSkill,
-        learnSkill,
-      };
+      formData.append("teachSkill", JSON.stringify(canHelpWith));
+      formData.append("learnSkill", JSON.stringify(wantToLearn));
 
-      const result = await updateProfile(payload);
-
-      if (result.success) {
-        setIsOpen(false);
-        router.refresh();
-      } else {
-        setErrorMessage(result.message || "Gagal memperbarui profil.");
+      if (avatarFile) {
+        formData.append("avatar", avatarFile);
       }
-    } catch (error) {
-      console.error("Failed to save profile:", error);
-      setErrorMessage("Terjadi kesalahan sistem saat menyimpan.");
+
+      const res = await fetch("/api/user/update", {
+        method: "PATCH",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Gagal memperbarui profil");
+      }
+
+      setIsOpen(false);
+      router.refresh();
+    } catch (error: any) {
+      console.error("Gagal menyimpan profil:", error);
+      alert(error.message || "Terjadi kesalahan saat menyimpan profil.");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
-
-  const handleSelectHelpSkill = (skill: string) => {
-    if (!skill) return;
-    const currentSkills = parseSkillNames(formData.canHelpWith);
-    if (!currentSkills.includes(skill)) {
-      setFormData((prev) => ({
-        ...prev,
-        canHelpWith: [...currentSkills, skill],
-      }));
-    }
-  };
-
-  const removeHelpSkill = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      canHelpWith: parseSkillNames(prev.canHelpWith).filter(
-        (_, i) => i !== index,
-      ),
-    }));
-  };
-
-  const handleSelectLearnSkill = (skill: string) => {
-    if (!skill) return;
-    const currentSkills = parseSkillNames(formData.wantToLearn);
-    if (!currentSkills.includes(skill)) {
-      setFormData((prev) => ({
-        ...prev,
-        wantToLearn: [...currentSkills, skill],
-      }));
-    }
-  };
-
-  const removeLearnSkill = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      wantToLearn: parseSkillNames(prev.wantToLearn).filter(
-        (_, i) => i !== index,
-      ),
-    }));
-  };
-
-  const currentHelpSkills = parseSkillNames(formData.canHelpWith);
-  const currentLearnSkills = parseSkillNames(formData.wantToLearn);
 
   return (
     <>
       <button
-        onClick={handleOpenModal}
-        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all"
+        onClick={() => setIsOpen(true)}
+        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition"
       >
-        <Pencil className="h-4 w-4 text-slate-500" />
-        Edit Profile
+        <Edit3 className="w-4 h-4" />
+        Edit Profil
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl space-y-5 border border-slate-100">
-            <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-white z-10">
-              <h3 className="text-lg font-bold text-slate-900">Edit Profile</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                Edit Profil
+              </h2>
               <button
-                type="button"
                 onClick={() => setIsOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
+                className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-full transition"
               >
-                <X className="h-5 w-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {errorMessage && (
-              <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-medium border border-red-200">
-                {errorMessage}
+            <form
+              onSubmit={handleSubmit}
+              className="p-6 space-y-6 max-h-[80vh] overflow-y-auto text-left"
+            >
+              {/* Avatar Section */}
+              <div className="flex flex-col items-center sm:flex-row gap-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                    {avatarPreview ? (
+                      <img
+                        src={avatarPreview}
+                        alt="Avatar Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl font-bold text-zinc-500">
+                        {name?.charAt(0)?.toUpperCase() || "U"}
+                      </span>
+                    )}
+                  </div>
+                  <label
+                    htmlFor="avatar-upload-input"
+                    className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  >
+                    <Camera className="w-6 h-6" />
+                  </label>
+                  <input
+                    id="avatar-upload-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </div>
+                <div className="text-center sm:text-left">
+                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    Foto Profil
+                  </h3>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                    Gunakan gambar berformat PNG, JPG, atau WEBP.
+                  </p>
+                  <label
+                    htmlFor="avatar-upload-input"
+                    className="inline-block mt-3 px-4 py-2 text-sm font-medium border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition"
+                  >
+                    Pilih Foto Baru
+                  </label>
+                </div>
               </div>
-            )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Full Name <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Nama Lengkap
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     required
+                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Username <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Username
                   </label>
                   <input
                     type="text"
-                    value={formData.username}
-                    onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Bio (Headline)
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Lokasi
                 </label>
                 <input
                   type="text"
-                  value={formData.bioHeadline}
-                  onChange={(e) =>
-                    setFormData({ ...formData, bioHeadline: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  About Me
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Bio Headline
                 </label>
-                <textarea
-                  rows={3}
-                  value={formData.aboutMe}
-                  onChange={(e) =>
-                    setFormData({ ...formData, aboutMe: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                <input
+                  type="text"
+                  value={bioHeadline}
+                  onChange={(e) => setBioHeadline(e.target.value)}
+                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
 
-              <hr className="border-slate-100 my-2" />
-
-              {/* Teach Skills */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700">
-                  I Can Help With (Teach Skills)
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Tentang Saya (About Me)
                 </label>
-
-                <div className="flex flex-wrap gap-2">
-                  {currentHelpSkills.map((skillName, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700"
-                    >
-                      <span>💡 {skillName}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeHelpSkill(idx)}
-                        className="text-indigo-400 hover:text-red-500 ml-1"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-
-                <select
-                  value=""
-                  onChange={(e) => handleSelectHelpSkill(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="" disabled>
-                    + Pilih skill untuk diajarkan...
-                  </option>
-                  {AVAILABLE_SKILLS.map((skill) => (
-                    <option
-                      key={skill}
-                      value={skill}
-                      disabled={currentHelpSkills.includes(skill)}
-                    >
-                      {skill}{" "}
-                      {currentHelpSkills.includes(skill)
-                        ? "(Sudah dipilih)"
-                        : ""}
-                    </option>
-                  ))}
-                </select>
+                <textarea
+                  rows={4}
+                  value={aboutMe}
+                  onChange={(e) => setAboutMe(e.target.value)}
+                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
               </div>
 
-              {/* Learn Skills */}
-              <div className="space-y-2 pt-2">
-                <label className="block text-xs font-bold text-slate-700">
-                  I Want to Learn (Learn Skills)
-                </label>
+              {/* Dropdown Skill dengan Penanda & Disable jika sudah dipilih */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Bisa Membantu */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Bisa Membantu (Pilih Skill)
+                  </label>
+                  <select
+                    disabled={isLoadingSkills}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && !canHelpWith.includes(val)) {
+                        setCanHelpWith([...canHelpWith, val]);
+                      }
+                      e.target.value = "";
+                    }}
+                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">
+                      {isLoadingSkills
+                        ? "Memuat skill..."
+                        : "-- Tambah Skill --"}
+                    </option>
+                    {availableSkills.map((s) => {
+                      const isSelected = canHelpWith.includes(s.skill_name);
+                      return (
+                        <option
+                          key={s.id}
+                          value={s.skill_name}
+                          disabled={isSelected}
+                        >
+                          {s.skill_name} {isSelected ? "✓ (Sudah dipilih)" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
 
-                <div className="flex flex-wrap gap-2">
-                  {currentLearnSkills.map((skillName, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700"
-                    >
-                      <span>🎯 {skillName}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeLearnSkill(idx)}
-                        className="text-emerald-400 hover:text-red-500 ml-1"
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {canHelpWith.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium px-2.5 py-1 rounded-md border border-indigo-200 dark:border-indigo-800"
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCanHelpWith(
+                              canHelpWith.filter((_, i) => i !== idx),
+                            )
+                          }
+                          className="hover:text-red-500 ml-1 font-bold"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                <select
-                  value=""
-                  onChange={(e) => handleSelectLearnSkill(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="" disabled>
-                    + Pilih skill untuk dipelajari...
-                  </option>
-                  {AVAILABLE_SKILLS.map((skill) => (
-                    <option
-                      key={skill}
-                      value={skill}
-                      disabled={currentLearnSkills.includes(skill)}
-                    >
-                      {skill}{" "}
-                      {currentLearnSkills.includes(skill)
-                        ? "(Sudah dipilih)"
-                        : ""}
+                {/* Ingin Belajar */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Ingin Belajar (Pilih Skill)
+                  </label>
+                  <select
+                    disabled={isLoadingSkills}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && !wantToLearn.includes(val)) {
+                        setWantToLearn([...wantToLearn, val]);
+                      }
+                      e.target.value = "";
+                    }}
+                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">
+                      {isLoadingSkills
+                        ? "Memuat skill..."
+                        : "-- Tambah Skill --"}
                     </option>
-                  ))}
-                </select>
+                    {availableSkills.map((s) => {
+                      const isSelected = wantToLearn.includes(s.skill_name);
+                      return (
+                        <option
+                          key={s.id}
+                          value={s.skill_name}
+                          disabled={isSelected}
+                        >
+                          {s.skill_name} {isSelected ? "✓ (Sudah dipilih)" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {wantToLearn.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-medium px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-800"
+                      >
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setWantToLearn(
+                              wantToLearn.filter((_, i) => i !== idx),
+                            )
+                          }
+                          className="hover:text-red-500 ml-1 font-bold"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all"
-                  disabled={loading}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-sm font-medium border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-50"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition disabled:opacity-50"
                 >
-                  {loading ? "Saving..." : "Save Changes"}
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
                 </button>
               </div>
             </form>
