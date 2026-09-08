@@ -1,4 +1,3 @@
-import { verifyToken } from "@/lib/auth";
 import { authenticate } from "@/lib/auth-helper";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -13,7 +12,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("users")
     .select(
-      "id, email, full_name, username, location, about_me, bio, user_skills(type, skills(id,name))",
+      "id, email, full_name, username, location, about_me, bio, avatar_url, user_skills(type, skills(id,name))",
     )
     .eq("id", user?.userId)
     .single();
