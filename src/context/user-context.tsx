@@ -18,10 +18,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const fetchUserProfile = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/user/profile");
+      // Panggilan fetch dari client-side otomatis menyertakan Cookie session & host domain saat ini
+      const res = await fetch("/api/user/profile", {
+        cache: "no-store",
+      });
+
       if (res.ok) {
         const data = await res.json();
-        setAvatarUrl(data.avatar_url || null);
+        // Menyesuaikan jika response berbentuk { avatar_url } atau { data: { avatar_url } }
+        setAvatarUrl(data.avatar_url || data.data?.avatar_url || null);
       } else {
         setAvatarUrl(null);
       }
