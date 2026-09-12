@@ -16,9 +16,13 @@ export async function PATCH(request: NextRequest) {
     // =========================
     const formData = await request.formData();
 
+    const rawUsername = formData.get("username") as string | null;
+
     const full_name = formData.get("full_name") as string | null;
     const email = formData.get("email") as string | null;
-    const username = formData.get("username") as string | null;
+    const username = rawUsername
+      ? rawUsername.replace(/[^a-zA-Z0-9_]/g, "")
+      : null;
     const location = formData.get("location") as string | null;
     const about_me = formData.get("about_me") as string | null;
     const bio = formData.get("bio") as string | null;
