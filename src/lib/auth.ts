@@ -6,7 +6,6 @@ export interface JWTPayload {
   userId: string;
   email: string;
   full_name: string;
-  avatar_url: string;
 }
 
 export function signToken(payload: JWTPayload): string {
