@@ -13,17 +13,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser } from "@/context/user-context"; // Import Hook Context
 
 interface ProfileDropDownProps {
   avatarUrl?: string | null;
 }
 
-export function ProfileDropDown({ avatarUrl }: ProfileDropDownProps) {
+export function ProfileDropDown({
+  avatarUrl: propAvatarUrl,
+}: ProfileDropDownProps) {
   const router = useRouter();
 
-  // Validasi: Jika avatarUrl null, undefined, atau string kosong, gunakan /king.jpg
+  // Ambil avatarUrl dari Context jika ada
+  const userContext = useUser();
+
+  const currentAvatar = propAvatarUrl ?? userContext?.avatarUrl;
   const userAvatar =
-    avatarUrl && avatarUrl.trim() !== "" ? avatarUrl : "/king.png";
+    currentAvatar && currentAvatar.trim() !== "" ? currentAvatar : "/king.png";
 
   const handleLogout = async () => {
     try {
@@ -47,7 +53,6 @@ export function ProfileDropDown({ avatarUrl }: ProfileDropDownProps) {
               alt="Profile Avatar"
               className="object-cover"
             />
-            {/* Fallback teks jika /king.jpg atau link Cloudinary rusak */}
             <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">
               U
             </AvatarFallback>

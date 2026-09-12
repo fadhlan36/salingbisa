@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value; // sesuaikan nama cookie token kamu
+  const token = cookieStore.get("token")?.value;
 
   let avatarUrl: string | null = null;
 
