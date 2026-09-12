@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Camera, Loader2, X, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/context/user-context";
 
 interface SkillItemInput {
   name: string;
@@ -34,6 +35,7 @@ export default function EditProfileModal({
 }: EditProfileModalProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const { setAvatarUrl } = useUser();
 
   const extractSkillNames = (skills: (string | SkillItemInput)[]) => {
     return skills
@@ -147,9 +149,15 @@ export default function EditProfileModal({
         body: formData,
       });
 
+      const resData = await res.json(); // 1. Parse JSON response
+
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Gagal memperbarui profil");
+        throw new Error(resData.error || "Gagal memperbarui profil");
+      }
+
+      // 2. Ambil avatar_url dari resData.data.avatar_url
+      if (resData.data?.avatar_url) {
+        setAvatarUrl(resData.data.avatar_url); // 🚀 Update context secara real-time
       }
 
       setIsOpen(false);
