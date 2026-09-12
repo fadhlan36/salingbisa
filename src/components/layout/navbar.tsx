@@ -265,7 +265,7 @@ function NavbarContent({ avatarUrl }: NavbarContentProps) {
 
             {/* 3. Profile DropDown (Desktop) */}
             <div className="hidden md:flex items-center justify-center shrink-0">
-              <ProfileDropDown avatarUrl={avatarUrl} />
+              <ProfileDropDown />
             </div>
           </div>
         </div>
@@ -300,7 +300,7 @@ function NavbarContent({ avatarUrl }: NavbarContentProps) {
 
           {/* Profile DropDown (Mobile) */}
           <div className="flex h-9 w-9 items-center justify-center shrink-0">
-            <ProfileDropDown avatarUrl={avatarUrl} />
+            <ProfileDropDown />
           </div>
         </div>
       </nav>
@@ -316,14 +316,10 @@ function NavbarFallback() {
   );
 }
 
-interface NavbarProps {
-  avatarUrl?: string | null;
-}
-
-export default function Navbar({ avatarUrl }: NavbarProps) {
+export default function Navbar() {
   return (
     <Suspense fallback={<NavbarFallback />}>
-      <NavbarContent avatarUrl={avatarUrl} />
+      <NavbarContent />
     </Suspense>
   );
 }

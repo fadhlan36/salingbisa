@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "@/app/globals.css";
 import Navbar from "@/components/layout/navbar";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
+import { UserProvider } from "@/context/user-context";
 
 export const metadata: Metadata = {
   title: "Dashboard | Salingbisa",
@@ -12,26 +11,13 @@ export const metadata: Metadata = {
 export default async function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-
-  let avatarUrl: string | null = null;
-
-  if (token) {
-    try {
-      // Decode JWT token untuk mengambil data payload
-      const decoded = jwt.decode(token) as { avatar_url?: string } | null;
-      avatarUrl = decoded?.avatar_url || null;
-    } catch (error) {
-      console.error("Failed to decode token:", error);
-    }
-  }
-
   return (
     <div className="min-h-screen bg-[#f9fafb] dark:bg-slate-950 flex flex-col">
-      <Navbar avatarUrl={avatarUrl} />
+      <UserProvider>
+        <Navbar />
 
-      <main className="flex-1 flex flex-col pt-14">{children}</main>
+        <main className="flex-1 flex flex-col pt-14">{children}</main>
+      </UserProvider>
     </div>
   );
 }

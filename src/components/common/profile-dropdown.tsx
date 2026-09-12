@@ -15,19 +15,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/context/user-context"; // Import Hook Context
 
-interface ProfileDropDownProps {
-  avatarUrl?: string | null;
-}
-
-export function ProfileDropDown({
-  avatarUrl: propAvatarUrl,
-}: ProfileDropDownProps) {
+export function ProfileDropDown() {
   const router = useRouter();
 
   // Ambil avatarUrl dari Context jika ada
   const userContext = useUser();
 
-  const currentAvatar = propAvatarUrl ?? userContext?.avatarUrl;
+  const currentAvatar = userContext?.avatarUrl;
   const userAvatar =
     currentAvatar && currentAvatar.trim() !== "" ? currentAvatar : "/king.png";
 
