@@ -46,9 +46,9 @@ export async function GET(request: NextRequest, { params }: Props) {
   if (data!.id !== user!.userId) {
     const { data: match, error: matchError } = await supabaseAdmin
       .from("matches")
-      .select("id, status, sender_id")
+      .select("id, status, user_a_id")
       .or(
-        `and(sender_id.eq.${user!.userId},receiver_id.eq.${data.id}),and(sender_id.eq.${data.id},receiver_id.eq.${user!.userId})`,
+        `and(user_a_id.eq.${user!.userId},user_b_id.eq.${data.id}),and(user_a_id.eq.${data.id},user_b_id.eq.${user!.userId})`,
       )
       .maybeSingle();
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest, { params }: Props) {
     if (match) {
       matchStatus = match.status === "accepted" ? "accepted" : "pending";
       matchId = match.id;
-      isSender = match.sender_id === user!.userId;
+      isSender = match.user_a_id === user!.userId;
     }
   }
 
