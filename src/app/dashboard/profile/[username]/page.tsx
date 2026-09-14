@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   MapPin,
@@ -12,6 +12,8 @@ import {
   MessageSquare,
   RefreshCw,
   UserPlus,
+  Check,
+  X,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +24,8 @@ interface SkillItem {
   name: string;
   icon: string;
 }
+
+type MatchStatus = "none" | "pending" | "accepted";
 
 interface UserProfile {
   id: string;
@@ -35,7 +39,9 @@ interface UserProfile {
   aboutMe: string;
   avatar: string;
   isOnline: boolean;
-  isMatched: boolean;
+  matchStatus: MatchStatus;
+  matchId: string | null;
+  isSender: boolean;
   stats: {
     learningPartners: number;
     successfulSessions: number;
@@ -102,16 +108,12 @@ export default function PartnerProfilePage({
   const resolvedParams = use(params);
   const rawUsername = resolvedParams.username;
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Cek query parameter ?isMatched=true
-  const isMatchedFromQuery = searchParams.get("isMatched") === "true";
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
-  const [isPending, setIsPending] = useState(false);
+  const [isResponding, setIsResponding] = useState(false);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -140,13 +142,6 @@ export default function PartnerProfilePage({
         throw new Error("User data is empty.");
       }
 
-      const apiMatchedStatus =
-        Boolean(data.is_matched) ||
-        Boolean(data.isMatched) ||
-        Boolean(data.is_partner) ||
-        Boolean(data.isPartner) ||
-        data.status === "matched";
-
       const formattedProfile: UserProfile = {
         id: data.id || "",
         name: data.full_name || data.name || "User",
@@ -161,7 +156,9 @@ export default function PartnerProfilePage({
         aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
         avatar: data.avatar_url || data.avatar || "/profile.jpg",
         isOnline: data.is_online ?? true,
-        isMatched: isMatchedFromQuery || apiMatchedStatus,
+        matchStatus: (data.match_status as MatchStatus) ?? "none",
+        matchId: data.match_id ?? null,
+        isSender: Boolean(data.is_sender),
         stats: {
           learningPartners: data.stats?.learning_partners ?? 0,
           successfulSessions: data.stats?.successful_sessions ?? 0,
@@ -200,17 +197,17 @@ export default function PartnerProfilePage({
 
       const data = await res.json();
 
-      // Backend mengirim array: [{ message }, { status }]
       const messageObj = Array.isArray(data)
         ? data.find((item: { message?: string }) => item?.message)
         : null;
 
-      const message = messageObj?.message;
+      const message = messageObj?.message || data?.message;
       const isSuccess = res.ok;
 
       if (isSuccess) {
         toast.success(message || "Request match berhasil dikirim.");
-        setIsPending(true);
+        // Refetch supaya match_status, match_id, is_sender ter-update dari server
+        await fetchProfile();
       } else {
         toast.error(message || "Gagal mengirim request match.");
       }
@@ -219,6 +216,50 @@ export default function PartnerProfilePage({
       toast.error("Gagal terhubung ke server. Silakan coba lagi.");
     } finally {
       setIsRequesting(false);
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!user?.matchId) return;
+    setIsResponding(true);
+
+    try {
+      const res = await fetch(`/api/matches/requests/${user.matchId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "accepted" }),
+      });
+
+      if (!res.ok) throw new Error("Gagal menerima request match.");
+
+      toast.success("Request match diterima.");
+      await fetchProfile();
+    } catch (err) {
+      console.error("Error accepting match:", err);
+      toast.error("Gagal menerima request match.");
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!user?.matchId) return;
+    setIsResponding(true);
+
+    try {
+      const res = await fetch(`/api/matches/requests/${user.matchId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Gagal menolak request match.");
+
+      toast.success("Request match ditolak.");
+      await fetchProfile();
+    } catch (err) {
+      console.error("Error rejecting match:", err);
+      toast.error("Gagal menolak request match.");
+    } finally {
+      setIsResponding(false);
     }
   };
 
@@ -327,9 +368,9 @@ export default function PartnerProfilePage({
               </div>
             </div>
 
-            {/* Action Button: Send Message vs Request Match vs Pending */}
+            {/* Action Button: 4 skenario berdasarkan matchStatus + isSender */}
             <div className="w-full md:w-auto shrink-0 flex justify-center md:justify-end pt-2 md:pt-0">
-              {user.isMatched ? (
+              {user.matchStatus === "accepted" && (
                 <Link
                   href={`/dashboard/messages?userId=${user.id}`}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto"
@@ -337,25 +378,60 @@ export default function PartnerProfilePage({
                   <MessageSquare className="h-4 w-4" />
                   Send Message
                 </Link>
-              ) : (
+              )}
+
+              {user.matchStatus === "pending" && user.isSender && (
+                <Button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm w-full sm:w-auto bg-amber-100 text-amber-700 border border-amber-300 cursor-not-allowed hover:bg-amber-100"
+                >
+                  <Loader2 className="h-4 w-4" />
+                  Request Sent
+                </Button>
+              )}
+
+              {user.matchStatus === "pending" && !user.isSender && (
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    onClick={handleAcceptRequest}
+                    disabled={isResponding}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm bg-emerald-600 text-white hover:bg-emerald-700 flex-1 sm:flex-none"
+                  >
+                    {isResponding ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    Accept
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRejectRequest}
+                    disabled={isResponding}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold border-red-300 text-red-700 hover:bg-red-50 flex-1 sm:flex-none"
+                  >
+                    <X className="h-4 w-4" />
+                    Reject
+                  </Button>
+                </div>
+              )}
+
+              {user.matchStatus === "none" && (
                 <Button
                   type="button"
                   onClick={handleRequestMatch}
-                  disabled={isRequesting || isPending}
-                  className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 w-full sm:w-auto ${
-                    isPending
-                      ? "bg-amber-100 text-amber-700 border border-amber-300 cursor-not-allowed hover:bg-amber-100 focus:ring-amber-500/20"
-                      : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500/20"
-                  }`}
+                  disabled={isRequesting}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 w-full sm:w-auto bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500/20"
                 >
                   {isRequesting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isPending ? (
-                    <Loader2 className="h-4 w-4" />
                   ) : (
                     <UserPlus className="h-4 w-4" />
                   )}
-                  {isPending ? "Pending" : "Request Match"}
+                  Request Match
                 </Button>
               )}
             </div>

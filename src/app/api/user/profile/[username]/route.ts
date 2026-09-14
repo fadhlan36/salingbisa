@@ -10,7 +10,7 @@ type Props = {
 };
 
 export async function GET(request: NextRequest, { params }: Props) {
-  const { error: authError } = authenticate(request);
+  const { user, error: authError } = authenticate(request);
 
   if (authError) {
     return authError;
@@ -38,6 +38,31 @@ export async function GET(request: NextRequest, { params }: Props) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 
+  let matchStatus: "none" | "pending" | "accepted" = "none";
+  let isSender = false;
+  let matchId: string | null = null;
+
+  // Cek relasi match antara user login dan target user jika user melihat dirinya sendiri skip ini
+  if (data!.id !== user!.userId) {
+    const { data: match, error: matchError } = await supabaseAdmin
+      .from("matches")
+      .select("id, status, user_a_id")
+      .or(
+        `and(user_a_id.eq.${user!.userId},user_b_id.eq.${data.id}),and(user_a_id.eq.${data.id},user_b_id.eq.${user!.userId})`,
+      )
+      .maybeSingle();
+
+    if (matchError) {
+      return NextResponse.json({ error: matchError.message }, { status: 500 });
+    }
+
+    if (match) {
+      matchStatus = match.status === "accepted" ? "accepted" : "pending";
+      matchId = match.id;
+      isSender = match.user_a_id === user!.userId;
+    }
+  }
+
   const teachSkill = data.user_skills
     .filter((item) => item.type === "teach")
     .map((item) => item.skills);
@@ -51,7 +76,14 @@ export async function GET(request: NextRequest, { params }: Props) {
   return NextResponse.json(
     {
       message: "Berhasil mengambil data profile",
-      data: { ...userData, skill_teach: teachSkill, skill_learn: learnSkill },
+      data: {
+        ...userData,
+        skill_teach: teachSkill,
+        skill_learn: learnSkill,
+        match_status: matchStatus,
+        is_sender: isSender,
+        match_id: matchId,
+      },
     },
     {
       status: 200,
