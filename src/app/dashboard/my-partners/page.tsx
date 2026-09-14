@@ -256,9 +256,7 @@ export default function MyPartnersPage() {
                     size="sm"
                     className="h-7.5 px-2.5 rounded-full text-[10px] font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                   >
-                    <Link
-                      href={`/dashboard/profile/${partner.username}?isMatched=true`}
-                    >
+                    <Link href={`/dashboard/profile/${partner.username}`}>
                       {/* Ikon terang bernuansa soft/pastel */}
                       <User className="h-3 w-3 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white transition-colors" />
                       <span className="ml-1">Profile</span>
