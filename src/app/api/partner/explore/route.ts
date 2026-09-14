@@ -1,7 +1,7 @@
 import { authenticate } from "@/lib/auth-helper";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
-import { calculateMatch } from "../recomendation/route";
+import { calculateMatch } from "@/lib/partners";
 
 type SkillMatch = {
   teach: string[];
