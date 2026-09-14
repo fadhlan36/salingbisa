@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   ArrowLeft,
   Search,
   Info,
   Smile,
-  Paperclip,
   Send,
   Loader2,
   RefreshCw,
@@ -36,6 +42,8 @@ interface Conversation {
   lastActivityAt: string;
   unreadCount?: number;
   messages: Message[];
+  hasMoreMessages?: boolean;
+  nextCursor?: string | null;
 }
 
 interface ConversationApiItem {
@@ -60,6 +68,11 @@ interface MessageApiItem {
   display_time: string;
 }
 
+interface MessagesPagination {
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
 interface SendMessageApiData {
   id: string;
   content: string;
@@ -75,6 +88,44 @@ interface RealtimeMessagePayload {
   created_at: string;
   display_time: string;
 }
+
+const EMOJI_LIST: string[] = [
+  "😀",
+  "😁",
+  "😂",
+  "🤣",
+  "😊",
+  "😍",
+  "😘",
+  "😜",
+  "🤩",
+  "🥳",
+  "😎",
+  "🤗",
+  "🤔",
+  "🙄",
+  "😴",
+  "😭",
+  "😢",
+  "😡",
+  "🥺",
+  "😱",
+  "👍",
+  "👎",
+  "🙏",
+  "👏",
+  "🔥",
+  "💯",
+  "🎉",
+  "❤️",
+  "💔",
+  "✨",
+  "😉",
+  "😅",
+];
+
+// Jarak dari atas (px) yang memicu fetch pesan lama saat discroll
+const LOAD_MORE_THRESHOLD_PX = 80;
 
 function formatConversationTime(dateString?: string): string {
   if (!dateString) return "";
@@ -104,12 +155,28 @@ export default function MessagesPage() {
 
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
 
   const [viewingChat, setViewingChat] = useState(false);
 
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+
   const activeIdRef = useRef(activeId);
+  const partnerIdRef = useRef<string>("");
   const viewingChatRef = useRef(viewingChat);
   const isDesktopRef = useRef(false);
+
+  // Pagination refs (dibaca langsung di scroll handler biar selalu up-to-date
+  // tanpa perlu re-attach listener setiap kali state berubah)
+  const hasMoreMessagesRef = useRef(false);
+  const nextCursorRef = useRef<string | null>(null);
+  const loadingMoreRef = useRef(false);
+
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef(0);
+  const shouldScrollToBottomRef = useRef(false);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -128,6 +195,31 @@ export default function MessagesPage() {
     mql.addEventListener("change", update);
     return () => mql.removeEventListener("change", update);
   }, []);
+
+  // Tutup emoji picker saat klik di luar area picker & tombolnya
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(target) &&
+        emojiButtonRef.current &&
+        !emojiButtonRef.current.contains(target)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showEmojiPicker]);
+
+  // Tutup emoji picker saat pindah percakapan
+  useEffect(() => {
+    setShowEmojiPicker(false);
+  }, [activeId]);
 
   const isConversationVisible = (matchId: string) => {
     if (matchId !== activeIdRef.current) return false;
@@ -169,6 +261,8 @@ export default function MessagesPage() {
         lastActivityAt: item.last_message?.created_at || "",
         unreadCount: 0,
         messages: [],
+        hasMoreMessages: false,
+        nextCursor: null,
       }));
 
       setConversations(normalized);
@@ -186,13 +280,33 @@ export default function MessagesPage() {
     }
   };
 
+  // options.before diisi -> mode "load more" (fetch pesan lebih lama).
+  // options kosong -> mode "initial" (load 20 pesan terbaru, replace state).
   const fetchMessages = useCallback(
-    async (matchId: string, partnerId: string) => {
-      setMessagesLoading(true);
-      setMessagesError(null);
+    async (
+      matchId: string,
+      partnerId: string,
+      options?: { before?: string },
+    ) => {
+      const isLoadMore = !!options?.before;
+
+      if (isLoadMore) {
+        if (loadingMoreRef.current) return;
+        loadingMoreRef.current = true;
+        setLoadingMoreMessages(true);
+      } else {
+        setMessagesLoading(true);
+        setMessagesError(null);
+      }
 
       try {
-        const res = await fetch(`/api/conversations/${matchId}/messages`);
+        const url = isLoadMore
+          ? `/api/conversations/${matchId}/messages?before=${encodeURIComponent(
+              options!.before!,
+            )}`
+          : `/api/conversations/${matchId}/messages`;
+
+        const res = await fetch(url);
 
         if (!res.ok) {
           throw new Error("Gagal memuat pesan.");
@@ -204,6 +318,10 @@ export default function MessagesPage() {
           ? json.find((item) => item?.data !== undefined)
           : json;
         const rawMessages: MessageApiItem[] = firstItem?.data || [];
+        const pagination: MessagesPagination = firstItem?.pagination || {
+          hasMore: false,
+          nextCursor: null,
+        };
 
         const normalizedMessages: Message[] = rawMessages.map((msg) => ({
           id: msg.id,
@@ -212,20 +330,59 @@ export default function MessagesPage() {
           timestamp: msg.display_time,
         }));
 
+        // Simpan tinggi scroll SEBELUM pesan lama disisipkan, supaya posisi
+        // scroll pengguna tidak "loncat" setelah list bertambah di atas.
+        if (isLoadMore && messagesContainerRef.current) {
+          prevScrollHeightRef.current =
+            messagesContainerRef.current.scrollHeight;
+        } else {
+          shouldScrollToBottomRef.current = true;
+        }
+
         setConversations((prev) =>
-          prev.map((conv) =>
-            conv.id === matchId
-              ? { ...conv, messages: normalizedMessages }
-              : conv,
-          ),
+          prev.map((conv) => {
+            if (conv.id !== matchId) return conv;
+
+            if (isLoadMore) {
+              const existingIds = new Set(conv.messages.map((m) => m.id));
+              const dedupedNew = normalizedMessages.filter(
+                (m) => !existingIds.has(m.id),
+              );
+
+              return {
+                ...conv,
+                messages: [...dedupedNew, ...conv.messages],
+                hasMoreMessages: pagination.hasMore,
+                nextCursor: pagination.nextCursor,
+              };
+            }
+
+            return {
+              ...conv,
+              messages: normalizedMessages,
+              hasMoreMessages: pagination.hasMore,
+              nextCursor: pagination.nextCursor,
+            };
+          }),
         );
       } catch (err) {
         console.error("Error fetching messages:", err);
-        setMessagesError(
-          err instanceof Error ? err.message : "Terjadi kesalahan tak terduga.",
-        );
+        if (isLoadMore) {
+          toast.error("Gagal memuat pesan lama.");
+        } else {
+          setMessagesError(
+            err instanceof Error
+              ? err.message
+              : "Terjadi kesalahan tak terduga.",
+          );
+        }
       } finally {
-        setMessagesLoading(false);
+        if (isLoadMore) {
+          loadingMoreRef.current = false;
+          setLoadingMoreMessages(false);
+        } else {
+          setMessagesLoading(false);
+        }
       }
     },
     [],
@@ -244,6 +401,57 @@ export default function MessagesPage() {
     fetchMessages(activeId, conv.partnerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, fetchMessages]);
+
+  const activeConversation = conversations.find((c) => c.id === activeId);
+
+  // Sinkronkan info pagination percakapan aktif ke ref, dibaca oleh scroll handler
+  useEffect(() => {
+    hasMoreMessagesRef.current = activeConversation?.hasMoreMessages ?? false;
+    nextCursorRef.current = activeConversation?.nextCursor ?? null;
+    partnerIdRef.current = activeConversation?.partnerId ?? "";
+  }, [
+    activeConversation?.hasMoreMessages,
+    activeConversation?.nextCursor,
+    activeConversation?.partnerId,
+  ]);
+
+  // Jaga posisi scroll setelah pesan lama disisipkan, atau scroll ke bawah
+  // saat pertama buka chat / kirim pesan baru.
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    if (shouldScrollToBottomRef.current) {
+      container.scrollTop = container.scrollHeight;
+      shouldScrollToBottomRef.current = false;
+      return;
+    }
+
+    if (prevScrollHeightRef.current > 0) {
+      const diff = container.scrollHeight - prevScrollHeightRef.current;
+      container.scrollTop = container.scrollTop + diff;
+      prevScrollHeightRef.current = 0;
+    }
+  }, [activeConversation?.messages]);
+
+  const handleMessagesScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    if (
+      container.scrollTop <= LOAD_MORE_THRESHOLD_PX &&
+      hasMoreMessagesRef.current &&
+      !loadingMoreRef.current
+    ) {
+      const matchId = activeIdRef.current;
+      const partnerId = partnerIdRef.current;
+      const cursor = nextCursorRef.current;
+
+      if (matchId && partnerId && cursor) {
+        fetchMessages(matchId, partnerId, { before: cursor });
+      }
+    }
+  };
 
   const conversationIds = useMemo(
     () => conversations.map((c) => c.id),
@@ -296,6 +504,10 @@ export default function MessagesPage() {
                 (m) => m.id === newMessage.id,
               );
 
+              if (visible && !alreadyExists) {
+                shouldScrollToBottomRef.current = true;
+              }
+
               const updatedMessages =
                 visible && !alreadyExists
                   ? [
@@ -332,8 +544,6 @@ export default function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationIds]);
 
-  const activeConversation = conversations.find((c) => c.id === activeId);
-
   const handleSelectConversation = (id: string) => {
     setActiveId(id);
     setViewingChat(true);
@@ -344,6 +554,11 @@ export default function MessagesPage() {
 
   const handleBackToList = () => {
     setViewingChat(false);
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setInputText((prev) => prev + emoji);
+    setShowEmojiPicker(false);
   };
 
   const handleSendMessage = async () => {
@@ -364,6 +579,8 @@ export default function MessagesPage() {
         minute: "2-digit",
       }),
     };
+
+    shouldScrollToBottomRef.current = true;
 
     setConversations((prev) =>
       prev.map((conv) =>
@@ -611,7 +828,11 @@ export default function MessagesPage() {
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div
+            ref={messagesContainerRef}
+            onScroll={handleMessagesScroll}
+            className="flex-1 overflow-y-auto p-6 space-y-4"
+          >
             {messagesLoading && (
               <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-400">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -636,6 +857,13 @@ export default function MessagesPage() {
                   <RefreshCw className="h-4 w-4" />
                   Coba Lagi
                 </Button>
+              </div>
+            )}
+
+            {!messagesLoading && !messagesError && loadingMoreMessages && (
+              <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-400">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Memuat pesan lama...
               </div>
             )}
 
@@ -697,7 +925,27 @@ export default function MessagesPage() {
               })}
           </div>
 
-          <div className="shrink-0 border-t bg-white p-4">
+          <div className="relative shrink-0 border-t bg-white p-4">
+            {showEmojiPicker && (
+              <div
+                ref={emojiPickerRef}
+                className="absolute bottom-full left-4 z-20 mb-2 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-lg"
+              >
+                <div className="grid grid-cols-8 gap-1">
+                  {EMOJI_LIST.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleEmojiSelect(emoji)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-lg hover:bg-slate-100"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -714,20 +962,16 @@ export default function MessagesPage() {
               />
               <div className="flex shrink-0 items-center gap-1">
                 <Button
+                  ref={emojiButtonRef}
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-600"
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                  className={`h-9 w-9 rounded-xl text-slate-400 hover:text-slate-600 ${
+                    showEmojiPicker ? "bg-slate-200 text-slate-600" : ""
+                  }`}
                 >
                   <Smile className="h-5 w-5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-600"
-                >
-                  <Paperclip className="h-5 w-5" />
                 </Button>
                 <Button
                   type="submit"
