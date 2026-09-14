@@ -216,6 +216,20 @@ export default function MessagesPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmojiPicker]);
 
+  // Tutup emoji picker saat tombol Esc ditekan
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscKey);
+    return () => document.removeEventListener("keydown", handleEscKey);
+  }, [showEmojiPicker]);
+
   // Tutup emoji picker saat pindah percakapan
   useEffect(() => {
     setShowEmojiPicker(false);
@@ -556,9 +570,10 @@ export default function MessagesPage() {
     setViewingChat(false);
   };
 
+  // Klik emoji hanya menambahkan ke input, TIDAK menutup panel.
+  // Panel hanya ditutup lewat Esc atau klik di luar area panel/tombol.
   const handleEmojiSelect = (emoji: string) => {
     setInputText((prev) => prev + emoji);
-    setShowEmojiPicker(false);
   };
 
   const handleSendMessage = async () => {
