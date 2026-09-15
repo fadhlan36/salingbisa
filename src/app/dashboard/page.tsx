@@ -222,7 +222,7 @@ export default async function Dashboard() {
     ? payload.full_name.split(" ")[0]
     : "there";
 
-  // Filter partner yang memiliki tingkat match di atas 75%
+  // Filter partner yang memiliki tingkat match di atas 70%
   const highMatchPartners = partners.filter((partner) => partner.match > 70);
 
   return (
