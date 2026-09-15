@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from "react";
 import SkillFilter from "@/components/dashboard/skill-filter";
 import PartnerCard from "@/components/dashboard/partner-card";
 import CoverflowCarousel from "@/components/dashboard/coverflow-carousel";
-import type { PartnerItem, SkillItem } from "@/app/dashboard/page";
+import type { PartnerItem, SkillItem } from "@/types/dashboard";
 
 interface TopPicksSectionProps {
   partners: PartnerItem[];
