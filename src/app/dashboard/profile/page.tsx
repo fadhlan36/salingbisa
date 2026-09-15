@@ -1,8 +1,33 @@
+import React from "react";
 import Link from "next/link";
 import { verifyToken } from "@/lib/auth";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { ArrowLeft, MapPin, Star, Users, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Lightbulb, Target } from "lucide-react";
+import {
+  FaReact,
+  FaJs,
+  FaLaravel,
+  FaPython,
+  FaHtml5,
+  FaCss3Alt,
+  FaNodeJs,
+  FaPhp,
+  FaGitAlt,
+  FaDocker,
+  FaDatabase,
+  FaPalette,
+  FaChartLine,
+  FaLightbulb,
+} from "react-icons/fa";
+import {
+  SiNextdotjs,
+  SiTypescript,
+  SiTailwindcss,
+  SiPostgresql,
+  SiMysql,
+  SiFlutter,
+} from "react-icons/si";
 import EditProfileModal from "@/components/profile/edit-profile-modal";
 
 interface ApiProfileResponse {
@@ -17,18 +42,8 @@ interface ApiProfileResponse {
   is_online?: boolean;
   rating?: number;
   reviews_count?: number;
-  stats?: {
-    learning_partners?: number;
-    successful_sessions?: number;
-    average_rating?: number;
-  };
   skill_teach?: any;
   skill_learn?: any;
-}
-
-interface SkillItem {
-  name: string;
-  icon: string;
 }
 
 interface UserProfile {
@@ -42,18 +57,11 @@ interface UserProfile {
   aboutMe: string;
   avatar: string;
   isOnline: boolean;
-  stats: {
-    learningPartners: number;
-    successfulSessions: number;
-    averageRating: number;
-  };
-  canHelpWith: SkillItem[];
-  wantToLearn: SkillItem[];
+  canHelpWith: string[];
+  wantToLearn: string[];
 }
 
 // Helper untuk membangun base URL absolut dari header request saat ini.
-// Diperlukan karena Server Component tidak bisa fetch dengan relative URL,
-// dan hardcode localhost akan gagal saat production (Vercel).
 async function getBaseUrl() {
   const headersList = await headers();
   const host = headersList.get("host");
@@ -62,13 +70,9 @@ async function getBaseUrl() {
 }
 
 /**
- * Helper untuk memproses data skill_teach & skill_learn
- * Hanya mengambil Nama dan Icon
+ * Helper untuk memproses data skill_teach & skill_learn.
  */
-function formatSkillList(
-  skillsInput?: any,
-  defaultIcon: string = "💡",
-): SkillItem[] {
+function formatSkillList(skillsInput?: any): string[] {
   if (!skillsInput) return [];
 
   let parsedSkills = skillsInput;
@@ -77,7 +81,7 @@ function formatSkillList(
     try {
       parsedSkills = JSON.parse(skillsInput);
     } catch {
-      return [{ name: skillsInput, icon: defaultIcon }];
+      return [skillsInput];
     }
   }
 
@@ -85,9 +89,7 @@ function formatSkillList(
 
   return parsedSkills
     .map((item) => {
-      if (typeof item === "string") {
-        return { name: item, icon: defaultIcon };
-      }
+      if (typeof item === "string") return item;
 
       if (typeof item === "object" && item !== null) {
         const name =
@@ -98,19 +100,144 @@ function formatSkillList(
           item.skill ||
           "";
 
-        if (!name) return null;
-
-        return {
-          name: String(name),
-          icon: item.icon || defaultIcon,
-        };
+        return name ? String(name) : null;
       }
 
       return null;
     })
-    .filter(
-      (item): item is SkillItem => item !== null && item.name.trim() !== "",
-    );
+    .filter((item): item is string => !!item && item.trim() !== "");
+}
+
+/**
+ * Helper untuk memetakan nama skill ke React Icon dan warna kustomnya.
+ */
+function getSkillIconAndColor(skillName: string): {
+  icon: React.ReactNode;
+  color: string;
+} {
+  const lower = skillName.toLowerCase().trim();
+
+  if (
+    lower.includes("ui/ux") ||
+    lower.includes("uiux") ||
+    lower.includes("design")
+  ) {
+    return {
+      icon: <FaPalette className="w-3.5 h-3.5" />,
+      color: "text-pink-500",
+    };
+  }
+  if (lower.includes("market") || lower.includes("marketing")) {
+    return {
+      icon: <FaChartLine className="w-3.5 h-3.5" />,
+      color: "text-emerald-500",
+    };
+  }
+  if (lower.includes("investasi") || lower.includes("investment")) {
+    return {
+      icon: <FaLightbulb className="w-3.5 h-3.5" />,
+      color: "text-amber-400",
+    };
+  }
+  if (lower.includes("laravel")) {
+    return {
+      icon: <FaLaravel className="w-3.5 h-3.5" />,
+      color: "text-red-500",
+    };
+  }
+  if (lower.includes("next")) {
+    return {
+      icon: <SiNextdotjs className="w-3.5 h-3.5" />,
+      color: "text-slate-800",
+    };
+  }
+  if (lower.includes("react")) {
+    return {
+      icon: <FaReact className="w-3.5 h-3.5" />,
+      color: "text-cyan-400",
+    };
+  }
+  if (lower.includes("javascript") || lower === "js") {
+    return { icon: <FaJs className="w-3.5 h-3.5" />, color: "text-yellow-400" };
+  }
+  if (lower.includes("typescript") || lower === "ts") {
+    return {
+      icon: <SiTypescript className="w-3.5 h-3.5" />,
+      color: "text-blue-600",
+    };
+  }
+  if (lower.includes("python")) {
+    return {
+      icon: <FaPython className="w-3.5 h-3.5" />,
+      color: "text-blue-500",
+    };
+  }
+  if (lower.includes("node")) {
+    return {
+      icon: <FaNodeJs className="w-3.5 h-3.5" />,
+      color: "text-green-600",
+    };
+  }
+  if (lower.includes("tailwind")) {
+    return {
+      icon: <SiTailwindcss className="w-3.5 h-3.5" />,
+      color: "text-cyan-500",
+    };
+  }
+  if (lower.includes("html")) {
+    return {
+      icon: <FaHtml5 className="w-3.5 h-3.5" />,
+      color: "text-orange-600",
+    };
+  }
+  if (lower.includes("css")) {
+    return {
+      icon: <FaCss3Alt className="w-3.5 h-3.5" />,
+      color: "text-blue-500",
+    };
+  }
+  if (lower.includes("php")) {
+    return {
+      icon: <FaPhp className="w-3.5 h-3.5" />,
+      color: "text-indigo-500",
+    };
+  }
+  if (lower.includes("git")) {
+    return {
+      icon: <FaGitAlt className="w-3.5 h-3.5" />,
+      color: "text-red-500",
+    };
+  }
+  if (lower.includes("docker")) {
+    return {
+      icon: <FaDocker className="w-3.5 h-3.5" />,
+      color: "text-blue-400",
+    };
+  }
+  if (lower.includes("postgresql")) {
+    return {
+      icon: <SiPostgresql className="w-3.5 h-3.5" />,
+      color: "text-blue-700",
+    };
+  }
+  if (lower.includes("mysql")) {
+    return {
+      icon: <SiMysql className="w-3.5 h-3.5" />,
+      color: "text-blue-600",
+    };
+  }
+  if (lower.includes("flutter")) {
+    return {
+      icon: <SiFlutter className="w-3.5 h-3.5" />,
+      color: "text-cyan-400",
+    };
+  }
+
+  // Fallback default icon
+  return {
+    icon: <FaDatabase className="w-3.5 h-3.5" />,
+    color: "text-slate-400",
+  };
 }
 
 async function getUserProfile(
@@ -129,8 +256,6 @@ async function getUserProfile(
 
     if (res.ok) {
       const result = await res.json();
-
-      // Unnesting data dari format response [{ message, data }, { status }]
       const firstItem = Array.isArray(result) ? result[0] : result;
       const data: ApiProfileResponse = firstItem?.data || firstItem;
 
@@ -150,23 +275,15 @@ async function getUserProfile(
           aboutMe: data.about_me || "Belum ada informasi tentang profil ini.",
           avatar: data.avatar_url || (data as any).avatar || "/profile.jpg",
           isOnline: data.is_online ?? true,
-          stats: {
-            learningPartners: data.stats?.learning_partners ?? 0,
-            successfulSessions: data.stats?.successful_sessions ?? 0,
-            averageRating: data.stats?.average_rating ?? 0,
-          },
-          canHelpWith: formatSkillList(data.skill_teach, "💡"),
-          wantToLearn: formatSkillList(data.skill_learn, "🎯"),
+          canHelpWith: formatSkillList(data.skill_teach),
+          wantToLearn: formatSkillList(data.skill_learn),
         };
       }
-    } else {
-      console.error("Gagal mengambil data profil:", res.status, res.statusText);
     }
   } catch (error) {
     console.error("Error fetching profile API:", error);
   }
 
-  // Fallback data
   return {
     name: payload?.full_name || "User",
     email: payload?.email || "",
@@ -178,11 +295,6 @@ async function getUserProfile(
     aboutMe: "Tambahkan informasi lengkap tentang dirimu.",
     avatar: "/profile.jpg",
     isOnline: true,
-    stats: {
-      learningPartners: 0,
-      successfulSessions: 0,
-      averageRating: 0,
-    },
     canHelpWith: [],
     wantToLearn: [],
   };
@@ -222,7 +334,7 @@ export default async function ProfilePage() {
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           {/* Avatar with Online Badge */}
           <div className="relative">
-            <div className="h-32 w-32 rounded-full overflow-hidden border bg-slate-100">
+            <div className="h-32 w-32 rounded-full overflow-hidden border bg-slate-100 shadow-sm">
               <img
                 src={user.avatar}
                 alt={user.name}
@@ -278,120 +390,83 @@ export default async function ProfilePage() {
               bioHeadline: user.bioHeadline,
               aboutMe: user.aboutMe,
               avatarUrl: user.avatar,
-              canHelpWith: user.canHelpWith.map((item) => item.name),
-              wantToLearn: user.wantToLearn.map((item) => item.name),
+              canHelpWith: user.canHelpWith,
+              wantToLearn: user.wantToLearn,
             }}
           />
         </div>
       </div>
 
-      {/* 3. Middle Cards Section (3 Column Grid) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 3. Skills Section (Modern Minimalist Pill Badges Layout) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* I Can Help With Card */}
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="h-4 w-4 text-slate-400" />
             <h2 className="font-bold text-slate-900 text-base">
               I Can Help With
             </h2>
           </div>
 
-          <div className="space-y-2.5">
-            {user.canHelpWith.length > 0 ? (
-              user.canHelpWith.map((item, index) => (
-                <div
-                  key={`${item.name}-${index}`}
-                  className="flex items-center p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">{item.icon}</span>
-                    <span className="text-sm font-semibold text-slate-800">
-                      {item.name}
+          {user.canHelpWith.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {user.canHelpWith.map((skill, index) => {
+                const { icon, color } = getSkillIconAndColor(skill);
+                return (
+                  <div
+                    key={`${skill}-${index}`}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-slate-700 text-xs font-semibold shadow-2xs hover:border-slate-300 hover:bg-slate-50/50 transition-all cursor-default"
+                  >
+                    <span
+                      className={`${color} flex items-center justify-center`}
+                    >
+                      {icon}
                     </span>
+                    <span>{skill}</span>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-slate-400">
-                Belum menambahkan skill yang dikuasai.
-              </p>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic">
+              Belum menambahkan skill yang dikuasai.
+            </p>
+          )}
         </div>
 
         {/* I Want to Learn Card */}
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-slate-400" />
             <h2 className="font-bold text-slate-900 text-base">
               I Want to Learn
             </h2>
           </div>
 
-          <div className="space-y-2.5">
-            {user.wantToLearn.length > 0 ? (
-              user.wantToLearn.map((item, index) => (
-                <div
-                  key={`${item.name}-${index}`}
-                  className="flex items-center p-2.5 rounded-xl bg-slate-50/70 border border-slate-100"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">{item.icon}</span>
-                    <span className="text-sm font-semibold text-slate-800">
-                      {item.name}
+          {user.wantToLearn.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {user.wantToLearn.map((skill, index) => {
+                const { icon, color } = getSkillIconAndColor(skill);
+                return (
+                  <div
+                    key={`${skill}-${index}`}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-slate-700 text-xs font-semibold shadow-2xs hover:border-slate-300 hover:bg-slate-50/50 transition-all cursor-default"
+                  >
+                    <span
+                      className={`${color} flex items-center justify-center`}
+                    >
+                      {icon}
                     </span>
+                    <span>{skill}</span>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-slate-400">
-                Belum menambahkan skill yang ingin dipelajari.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Stats Card */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm flex flex-col justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600">
-              <Users className="h-5 w-5" />
+                );
+              })}
             </div>
-            <div>
-              <p className="text-xl font-bold text-slate-900">
-                {user.stats.learningPartners}
-              </p>
-              <p className="text-xs font-medium text-slate-500">
-                Learning Partners
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-900">
-                {user.stats.successfulSessions}
-              </p>
-              <p className="text-xs font-medium text-slate-500">
-                Successful Sessions
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600">
-              <Star className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-900">
-                {user.stats.averageRating}
-              </p>
-              <p className="text-xs font-medium text-slate-500">
-                Average Rating
-              </p>
-            </div>
-          </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic">
+              Belum menambahkan skill yang ingin dipelajari.
+            </p>
+          )}
         </div>
       </div>
 
