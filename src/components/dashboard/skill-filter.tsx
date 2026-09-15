@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { SkillItem } from "@/app/dashboard/page";
 import {
   HiCode,
   HiChip,
@@ -24,6 +23,7 @@ import {
   FaGitAlt,
   FaDatabase,
 } from "react-icons/fa";
+import { SkillItem } from "@/types/dashboard";
 
 interface SkillFilterProps {
   skills: SkillItem[];
