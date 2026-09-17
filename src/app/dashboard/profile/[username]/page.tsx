@@ -406,7 +406,7 @@ export default function PartnerProfilePage({
   }, [rawUsername]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 text-slate-800 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl space-y-6 text-slate-800 px-4 pt-8 pb-28 sm:px-6 lg:px-8 lg:pb-10">
       {/* Back Button */}
       <div>
         <button
@@ -485,15 +485,6 @@ export default function PartnerProfilePage({
                   <span className="flex items-center gap-1">
                     <MapPin className="h-4 w-4 text-slate-400" />
                     {user.location}
-                  </span>
-                  <span className="flex items-center gap-1 font-medium">
-                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    <span className="font-semibold text-slate-900">
-                      {user.rating}
-                    </span>{" "}
-                    <span className="text-slate-500">
-                      ({user.reviewsCount} reviews)
-                    </span>
                   </span>
                 </div>
 

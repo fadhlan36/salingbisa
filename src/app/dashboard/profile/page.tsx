@@ -317,7 +317,7 @@ export default async function ProfilePage() {
   const user = await getUserProfile(token, payload);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 text-slate-800">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 pt-8 pb-28 text-slate-800 sm:px-6 lg:pt-20 lg:pb-10">
       {/* 1. Back Button */}
       <div>
         <Link
@@ -361,15 +361,6 @@ export default async function ProfilePage() {
               <span className="flex items-center gap-1">
                 <MapPin className="h-4 w-4 text-slate-400" />
                 {user.location}
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                <span className="font-semibold text-slate-900">
-                  {user.rating}
-                </span>{" "}
-                <span className="text-slate-500">
-                  ({user.reviewsCount} reviews)
-                </span>
               </span>
             </div>
 
