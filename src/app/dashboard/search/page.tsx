@@ -1,142 +1,283 @@
-import Link from "next/link";
-import { cookies, headers } from "next/headers";
-import PartnerCard from "@/components/dashboard/partner-card";
+"use client";
 
-interface PartnerSearchResult {
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  AlertCircle,
+  ChevronDown,
+  Loader2,
+  RefreshCw,
+  SearchX,
+} from "lucide-react";
+import PartnerCard from "@/components/dashboard/partner-card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+
+type PartnerType = {
   id: string;
-  full_name: string;
+  name: string;
   username: string;
-  avatar_url: string | null;
+  avatar: string;
+  match: number;
   teach: string[];
   learn: string[];
-  location: string;
-}
+};
 
-interface SearchApiResponse {
-  message: string;
-  data: PartnerSearchResult[];
-  status: number;
-}
+export default function SearchPage() {
+  const searchParams = useSearchParams();
 
-// Helper untuk membangun base URL absolut dari header request saat ini.
-// Diperlukan karena Server Component tidak bisa fetch dengan relative URL,
-// dan hardcode localhost akan gagal saat production (Vercel).
-async function getBaseUrl() {
-  const headersList = await headers();
-  const host = headersList.get("host");
-  const protocol = host?.includes("localhost") ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+  const [partners, setPartners] = useState<PartnerType[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-async function searchPartners(
-  query: URLSearchParams,
-  token: string,
-): Promise<SearchApiResponse> {
-  try {
-    const baseUrl = await getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/partner?${query.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Cookie: `token=${token}`,
-      },
-      cache: "no-store",
-    });
+  const observerRef = useRef<HTMLDivElement | null>(null);
 
-    if (!res.ok) {
-      console.error("Failed to fetch search results:", res.statusText);
-      return { message: res.statusText, data: [], status: res.status };
+  // Filter yang aktif dari URL — dipakai untuk query API & ditampilkan di header
+  const activeSearch = searchParams.get("search") || "";
+  const activeTeach = searchParams.get("teach") || "";
+  const activeLearn = searchParams.get("learn") || "";
+  const activeLocation = searchParams.get("location") || "";
+
+  // String gabungan filter (tanpa page), dipakai sebagai dependency effect
+  // Supaya effect ini cuma jalan kalau FILTER-nya berubah, bukan tiap kali page berubah
+  const filterKey = `${activeSearch}|${activeTeach}|${activeLearn}|${activeLocation}`;
+
+  const fetchPartners = useCallback(
+    async (pageToFetch: number) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const query = new URLSearchParams();
+        if (activeSearch) query.set("search", activeSearch);
+        if (activeTeach) query.set("teach", activeTeach);
+        if (activeLearn) query.set("learn", activeLearn);
+        if (activeLocation) query.set("location", activeLocation);
+        query.set("page", String(pageToFetch));
+        query.set("limit", "12");
+
+        const res = await fetch(`/api/partner?${query.toString()}`);
+
+        if (res.status === 401) {
+          window.location.href = "/auth/login";
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error("Gagal mengambil hasil pencarian.");
+        }
+
+        const json = await res.json();
+        const rawItems = json?.data || [];
+
+        const normalized: PartnerType[] = rawItems.map((item: any) => ({
+          id: String(item.id),
+          name: item.full_name || item.username || "No Name",
+          username: String(item.username || item.id).replace(/^@/, ""),
+          avatar: item.avatar_url || "/profile.jpg",
+          match: typeof item.match === "number" ? item.match : 100,
+          teach:
+            Array.isArray(item.teach) && item.teach.length
+              ? item.teach
+              : ["Not specified"],
+          learn:
+            Array.isArray(item.learn) && item.learn.length
+              ? item.learn
+              : ["Not specified"],
+        }));
+
+        setPartners((prev) =>
+          pageToFetch === 1 ? normalized : [...prev, ...normalized],
+        );
+
+        // API belum kirim info total halaman, jadi pakai heuristik:
+        // kalau data yang balik penuh sesuai limit, anggap masih ada halaman berikutnya
+        setHasMore(normalized.length === 12);
+      } catch (err: unknown) {
+        console.error("Error fetching search results:", err);
+        setError(
+          err instanceof Error ? err.message : "Terjadi kesalahan tak terduga.",
+        );
+      } finally {
+        setLoading(false);
+        setInitialLoad(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeSearch, activeTeach, activeLearn, activeLocation],
+  );
+
+  // Reset & fetch ulang dari halaman 1 setiap kali FILTER berubah (bukan page)
+  useEffect(() => {
+    setPage(1);
+    setPartners([]);
+    setHasMore(true);
+    setInitialLoad(true);
+    fetchPartners(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
+
+  const loadMorePartners = () => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPartners(nextPage);
     }
-
-    return (await res.json()) as SearchApiResponse;
-  } catch (error) {
-    console.error("Error fetching search results:", error);
-    return { message: "Internal server error", data: [], status: 500 };
-  }
-}
-
-export default async function SearchPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-  const params = await searchParams;
-  const token = (await cookies()).get("token")?.value;
-
-  if (!token) {
-    window.location.href = "/auth/login";
-    return;
-  }
-
-  const currentPage = parseInt(params.page || "1", 10);
-  const limit = params.limit || "12";
-
-  const query = new URLSearchParams();
-  if (params.search) query.set("search", params.search);
-  if (params.teach) query.set("teach", params.teach);
-  if (params.learn) query.set("learn", params.learn);
-  if (params.location) query.set("location", params.location);
-  query.set("page", String(currentPage));
-  query.set("limit", limit);
-
-  const result = await searchPartners(query, token);
-
-  const partners = (result.data || []).map((partner) => ({
-    id: partner.id,
-    name: partner.full_name,
-    username: partner.username,
-    avatar: partner.avatar_url || "/profile.jpg",
-    match: 100, // TODO: endpoint /api/partner belum kirim skor match, sementara hardcode
-    teach: partner.teach?.length ? partner.teach : ["Not specified"],
-    learn: partner.learn?.length ? partner.learn : ["Not specified"],
-  }));
-
-  const buildPageUrl = (page: number) => {
-    const p = new URLSearchParams(query);
-    p.set("page", String(page));
-    return `/dashboard/search?${p.toString()}`;
   };
 
+  // Infinite scroll trigger
+  useEffect(() => {
+    const target = observerRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !error) {
+          loadMorePartners();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loading, page, error]);
+
+  const hasActiveFilter =
+    activeSearch || activeTeach || activeLearn || activeLocation;
+
   return (
-    <section className="mx-auto max-w-7xl space-y-6 pt-20 pb-10 px-4 sm:px-6">
+    <section className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:p-8">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold">Hasil Pencarian</h2>
-        {params.search && (
-          <p className="text-sm text-muted-foreground">
-            Menampilkan hasil untuk &quot;{params.search}&quot;
-          </p>
-        )}
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Hasil Pencarian
+        </h1>
+        <p className="text-xs font-medium text-slate-400 mt-0.5">
+          {hasActiveFilter ? (
+            <>
+              {activeSearch && <>Kata kunci: &quot;{activeSearch}&quot; </>}
+              {activeTeach && <>· Mengajar: {activeTeach} </>}
+              {activeLearn && <>· Belajar: {activeLearn} </>}
+              {activeLocation && <>· Lokasi: {activeLocation}</>}
+            </>
+          ) : (
+            "Menampilkan semua partner"
+          )}
+        </p>
       </div>
 
-      {partners.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {partners.map((partner) => (
-            <PartnerCard key={partner.id} partner={partner} />
+      {/* Grid hasil */}
+      <div className="grid grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {partners.map((partner, index) => {
+          const delay = (index % 12) * 100;
+          return (
+            <div
+              key={partner.id}
+              className="flex w-full animate-pop-in-bouncy justify-center opacity-0 [&>div]:w-full [&>div]:max-w-none sm:[&>div]:w-80"
+              style={{ animationDelay: `${delay}ms` }}
+            >
+              <PartnerCard partner={partner} />
+            </div>
+          );
+        })}
+
+        {/* Skeleton loading */}
+        {loading &&
+          Array.from({ length: initialLoad ? 6 : 3 }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className="flex w-full justify-center [&>div]:w-full [&>div]:max-w-none sm:[&>div]:w-80"
+            >
+              <div className="flex h-[480px] w-72 flex-col justify-between rounded-[36px] border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:w-80">
+                <div className="flex flex-col items-center space-y-3 pt-4">
+                  <Skeleton className="h-24 w-24 rounded-full" />
+                  <Skeleton className="h-5 w-36 rounded-md" />
+                  <Skeleton className="h-3 w-24 rounded-md" />
+                </div>
+                <div className="space-y-4 my-6">
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-20 rounded-md" />
+                    <div className="flex flex-wrap gap-1.5">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                      <Skeleton className="h-6 w-14 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-24 rounded-md" />
+                    <div className="flex flex-wrap gap-1.5">
+                      <Skeleton className="h-6 w-18 rounded-full" />
+                      <Skeleton className="h-6 w-12 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+                <Skeleton className="h-10 w-full rounded-full" />
+              </div>
+            </div>
           ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed p-8 text-center text-slate-500">
-          Tidak ada partner yang cocok dengan pencarian ini.
+      </div>
+
+      {/* Empty state — belum ada hasil sama sekali */}
+      {!loading && !error && partners.length === 0 && (
+        <div className="flex flex-col items-center justify-center space-y-4 rounded-[36px] border-2 border-dashed border-slate-300 bg-slate-50/50 p-10 text-center dark:border-slate-800 dark:bg-slate-900/50">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-950/50">
+            <SearchX className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-bold text-slate-800 dark:text-slate-200">
+              Tidak ada partner ditemukan
+            </h4>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Coba ubah kata kunci atau filter yang kamu gunakan.
+            </p>
+          </div>
         </div>
       )}
 
-      <div className="flex justify-center gap-3 pt-4">
-        {currentPage > 1 && (
-          <Link
-            href={buildPageUrl(currentPage - 1)}
-            className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50"
+      {/* Error state */}
+      {error && (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <p className="text-sm font-medium text-red-600">{error}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchPartners(page)}
+            className="mt-3 gap-2"
           >
-            Sebelumnya
-          </Link>
-        )}
-        {partners.length === Number(limit) && (
-          <Link
-            href={buildPageUrl(currentPage + 1)}
-            className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50"
-          >
-            Selanjutnya
-          </Link>
-        )}
-      </div>
+            <RefreshCw className="h-4 w-4" />
+            Coba Lagi
+          </Button>
+        </div>
+      )}
+
+      {/* Trigger infinite scroll — invisible, cuma buat detect scroll ke bawah */}
+      {hasMore && !error && partners.length > 0 && (
+        <div ref={observerRef} className="flex justify-center py-4">
+          {loading && !initialLoad && (
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+          )}
+        </div>
+      )}
+
+      {/* End of list */}
+      {!hasMore && !loading && partners.length > 0 && (
+        <div className="pb-2 pt-4">
+          <div className="relative flex items-center justify-center">
+            <div className="relative flex items-center gap-2 bg-transparent px-4 text-xs text-muted-foreground">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
+              </span>
+              Kamu sudah mencapai akhir daftar
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
