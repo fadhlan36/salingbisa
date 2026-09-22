@@ -65,6 +65,11 @@ export function calculateMatch(
  * Dipakai langsung oleh Server Component (Dashboard) maupun oleh API route
  * /api/partner/recomendation — logic query & perhitungan match hanya ada
  * di satu tempat ini.
+ *
+ * Catatan: fungsi ini TIDAK membatasi jumlah hasil (tidak ada .slice()).
+ * Pemotongan berdasarkan threshold match (mis. >= 80%, >= 70%) dilakukan
+ * oleh pemanggil (Dashboard), supaya partner dengan match tinggi tidak
+ * ikut terpotong sebelum sempat difilter.
  */
 export async function getPartnerRecommendations(
   userId: string,
@@ -122,6 +127,5 @@ export async function getPartnerRecommendations(
         learn: partner.learn,
       }),
     }))
-    .sort((a, b) => Number.parseInt(b.match) - Number.parseInt(a.match))
-    .slice(0, 10);
+    .sort((a, b) => Number.parseInt(b.match) - Number.parseInt(a.match));
 }
