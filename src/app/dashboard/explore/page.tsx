@@ -26,14 +26,13 @@ export default function Explorer() {
   const [hasScrolled, setHasScrolled] = useState(false);
 
   const observerRef = useRef<HTMLDivElement | null>(null);
+  const desktopObserverRef = useRef<HTMLDivElement | null>(null);
   const mobileContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll to top khusus mobile container
   const scrollToTopMobile = () => {
     mobileContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Fungsi pemanggil API
   const fetchPartners = useCallback(async (pageToFetch: number) => {
     if (loading) return;
     setLoading(true);
@@ -55,12 +54,10 @@ export default function Explorer() {
 
       const json = await res.json();
 
-      // Ekstraksi data dari struktur array response backend
       const responseData = Array.isArray(json) ? json[0] : json;
       const rawItems = responseData?.data || [];
       const pagination = responseData?.pagination;
 
-      // Map format API ke format PartnerCardProps
       const normalizedPartners: PartnerType[] = rawItems.map((item: any) => ({
         id: String(item.id),
         name: item.full_name || item.username || "No Name",
@@ -75,14 +72,12 @@ export default function Explorer() {
         isMatched: Boolean(item.isMatched),
       }));
 
-      // Tambahkan data baru ke state tanpa menduplikasi data
       setPartners((prev) =>
         pageToFetch === 1
           ? normalizedPartners
           : [...prev, ...normalizedPartners],
       );
 
-      // Cek apakah masih ada data selanjutnya berdasarkan pagination API
       if (pagination) {
         setHasMore(pagination.hasMore);
       } else {
@@ -98,12 +93,10 @@ export default function Explorer() {
     }
   }, []);
 
-  // Fetch halaman pertama saat load awal
   useEffect(() => {
     fetchPartners(1);
   }, [fetchPartners]);
 
-  // Handler untuk load page berikutnya
   const loadMorePartners = () => {
     if (!loading && hasMore) {
       const nextPage = page + 1;
@@ -112,38 +105,39 @@ export default function Explorer() {
     }
   };
 
-  // Setup Intersection Observer untuk trigger infinite scroll
+  // Observer tunggal yang mengamati DUA elemen trigger (mobile & desktop),
+  // supaya infinite scroll jalan di kedua breakpoint layar
   useEffect(() => {
-    const target = observerRef.current;
-    if (!target) return;
+    const handleIntersect: IntersectionObserverCallback = (entries) => {
+      const isVisible = entries.some((entry) => entry.isIntersecting);
+      if (isVisible && hasMore && !loading && !error) {
+        loadMorePartners();
+      }
+    };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && !error) {
-          loadMorePartners();
-        }
-      },
-      { threshold: 0.1 },
-    );
+    const observer = new IntersectionObserver(handleIntersect, {
+      threshold: 0.1,
+    });
 
-    observer.observe(target);
+    if (observerRef.current) observer.observe(observerRef.current);
+    if (desktopObserverRef.current)
+      observer.observe(desktopObserverRef.current);
+
     return () => observer.disconnect();
   }, [hasMore, loading, page, error]);
 
   return (
     <section className="w-full md:mx-auto md:max-w-7xl">
-      {/* MOBILE VERSION — Full Width & Center Fitted */}
+      {/* MOBILE VERSION */}
       <div
         ref={mobileContainerRef}
         onScroll={(e) => {
-          // Jika posisi scroll vertikal lebih dari 20px, sembunyikan indikator
           if (e.currentTarget.scrollTop > 20 && !hasScrolled) {
             setHasScrolled(true);
           }
         }}
         className="md:hidden h-[calc(100dvh-4rem)] w-full overflow-y-auto snap-y snap-mandatory scroll-smooth bg-background"
       >
-        {/* Tiap partner card — snap child */}
         {partners.map((partner, index) => {
           const delay = (index % 10) * 150;
 
@@ -152,7 +146,6 @@ export default function Explorer() {
               key={partner.id}
               className="relative flex h-full w-full snap-center snap-always items-center justify-center p-4"
             >
-              {/* Floating Header Badge khusus pada slide pertama */}
               {index === 0 && (
                 <div className="absolute top-6 left-0 right-0 z-20 flex flex-col items-center justify-center pointer-events-none text-center px-4">
                   <span className="rounded-full bg-slate-900/80 dark:bg-slate-100/10 px-4 py-1.5 text-xs font-medium text-white dark:text-slate-200 backdrop-blur-md border border-white/10 shadow-lg">
@@ -161,7 +154,6 @@ export default function Explorer() {
                 </div>
               )}
 
-              {/* Card wrapper */}
               <div
                 className="w-full aspect-[3/4] max-h-[85%] animate-pop-in-bouncy flex justify-center items-center [&>div]:w-full [&>div]:h-full"
                 style={{ animationDelay: `${delay}ms` }}
@@ -169,7 +161,6 @@ export default function Explorer() {
                 <PartnerCard partner={partner} />
               </div>
 
-              {/* Indicator Scroll Down khusus slide pertama */}
               {index === 0 && !hasScrolled && (
                 <div
                   className="absolute bottom-11 left-0 right-0 z-20 flex flex-col items-center justify-center pointer-events-none animate-bounce transition-opacity duration-300"
@@ -185,7 +176,6 @@ export default function Explorer() {
           );
         })}
 
-        {/* End of list card */}
         {!hasMore && !loading && partners.length > 0 && (
           <div className="flex h-full w-full snap-center snap-always items-center justify-center p-4">
             <div className="flex w-full aspect-[3/4] max-h-[85%] flex-col items-center justify-center space-y-4 rounded-[36px] border-2 border-dashed border-slate-300 bg-slate-50/50 p-6 text-center dark:border-slate-800 dark:bg-slate-900/50">
@@ -213,7 +203,6 @@ export default function Explorer() {
           </div>
         )}
 
-        {/* Error state */}
         {error && (
           <div className="flex h-full w-full snap-center snap-always items-center justify-center p-4 shrink-0">
             <div className="flex w-full max-w-[320px] flex-col items-center justify-center space-y-4 rounded-[32px] border border-red-200/80 bg-red-50/50 p-6 text-center dark:border-red-900/30 dark:bg-red-950/20 backdrop-blur-sm">
@@ -241,7 +230,6 @@ export default function Explorer() {
           </div>
         )}
 
-        {/* Seamless Infinite Scroll Trigger & Center Loading */}
         {hasMore && !error && (
           <div
             ref={observerRef}
@@ -266,7 +254,7 @@ export default function Explorer() {
         )}
       </div>
 
-      {/* DESKTOP VERSION — Normal Grid & Scroll */}
+      {/* DESKTOP VERSION */}
       <div className="hidden md:block space-y-8 p-6 lg:p-8 mt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -280,7 +268,6 @@ export default function Explorer() {
         </div>
 
         <div className="grid grid-cols-2 justify-items-center gap-6 xl:grid-cols-3">
-          {/* Card Data Partners */}
           {partners.map((partner, index) => {
             const delay = (index % 10) * 150;
 
@@ -304,7 +291,6 @@ export default function Explorer() {
             );
           })}
 
-          {/* Skeleton Loading - Tampil di dalam grid sesuai jumlah item yang dimuat */}
           {loading &&
             Array.from({ length: 3 }).map((_, index) => (
               <div
@@ -312,14 +298,12 @@ export default function Explorer() {
                 className="flex w-full items-center justify-center [&>div]:w-full [&>div]:max-w-none sm:[&>div]:w-80"
               >
                 <div className="flex h-[480px] w-72 flex-col justify-between rounded-[36px] border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:w-80">
-                  {/* Header / Avatar Skeleton */}
                   <div className="flex flex-col items-center space-y-3 pt-4">
                     <Skeleton className="h-24 w-24 rounded-full" />
                     <Skeleton className="h-5 w-36 rounded-md" />
                     <Skeleton className="h-3 w-24 rounded-md" />
                   </div>
 
-                  {/* Content / Badges Skeleton */}
                   <div className="space-y-4 my-6">
                     <div className="space-y-2">
                       <Skeleton className="h-3 w-20 rounded-md" />
@@ -339,13 +323,11 @@ export default function Explorer() {
                     </div>
                   </div>
 
-                  {/* Footer / Button Skeleton */}
                   <Skeleton className="h-10 w-full rounded-full" />
                 </div>
               </div>
             ))}
 
-          {/* End of Content Card */}
           {!hasMore &&
             !loading &&
             partners.length > 0 &&
@@ -379,7 +361,21 @@ export default function Explorer() {
             )}
         </div>
 
-        {/* Error State */}
+        {/* Infinite Scroll Trigger — Desktop */}
+        {hasMore && !error && (
+          <div
+            ref={desktopObserverRef}
+            className="flex items-center justify-center py-8"
+          >
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                Loading more partners...
+              </div>
+            )}
+          </div>
+        )}
+
         {error && (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <p className="text-sm font-medium text-red-600">{error}</p>
@@ -395,15 +391,12 @@ export default function Explorer() {
           </div>
         )}
 
-        {/* End Divider (Bottom) */}
         {!hasMore && !loading && partners.length > 0 && (
           <div className="mt-8 pb-2 pt-4">
             <div className="relative flex items-center justify-center">
               <div className="relative flex items-center gap-2 bg-transparent px-4 text-xs text-muted-foreground">
                 <span className="relative flex h-2 w-2">
-                  {/* Ring Animasi Ping */}
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
-                  {/* Titik Utama */}
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
                 </span>
                 You&apos;ve reached the end of the list

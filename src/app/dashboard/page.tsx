@@ -13,6 +13,10 @@ import {
 import { getSkillRecommendations } from "@/lib/skills";
 import type { PartnerItem, SkillItem } from "@/types/dashboard";
 
+// Threshold persentase match untuk masing-masing section
+const TOP_PICKS_MIN_MATCH = 75;
+const HIGH_COMPATIBILITY_MIN_MATCH = 70;
+
 // ===================================================================
 // Skeleton — dirender instan sebelum data siap
 // ===================================================================
@@ -46,15 +50,21 @@ async function DashboardContent({ userId }: { userId: string }) {
     getSkillRecommendations(userId),
   ]);
 
+  // Top Picks: partner dengan match SANGAT tinggi (>= 80%)
+  const topPicksPartners = partners.filter(
+    (partner) => Number.parseInt(partner.match) >= TOP_PICKS_MIN_MATCH,
+  );
+
+  // High Compatibility: partner dengan match tinggi (>= 70%)
   const highMatchPartners = partners.filter(
-    (partner) => Number.parseInt(partner.match) > 70,
+    (partner) => Number.parseInt(partner.match) >= HIGH_COMPATIBILITY_MIN_MATCH,
   );
 
   return (
     <div className="space-y-10">
       {/* Top Picks Section - 3D Coverflow Carousel, dengan filter skill */}
       <TopPicksSection
-        partners={partners.map(mapToUiPartner)}
+        partners={topPicksPartners.map(mapToUiPartner)}
         skills={skills.map(
           (skill): SkillItem => ({
             id: skill.id,
@@ -65,7 +75,7 @@ async function DashboardContent({ userId }: { userId: string }) {
         )}
       />
 
-      {/* High Match Partners Grid Section (Match > 70%) */}
+      {/* High Match Partners Grid Section (Match >= 70%) */}
       <div className="space-y-4 pt-4">
         <div className="flex items-end justify-between px-1">
           <div>

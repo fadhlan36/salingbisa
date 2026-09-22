@@ -75,11 +75,13 @@ export async function GET(request: NextRequest) {
       .map((skill) => skill.skill.name),
   };
 
-  // Existing matches
+  // Existing matches — hanya exclude yang statusnya pending/accepted,
+  // yang rejected tetap boleh muncul lagi di Explore
   const { data: matches, error: matchError } = await supabaseAdmin
     .from("matches")
-    .select("user_a_id, user_b_id")
-    .or(`user_a_id.eq.${user!.userId},user_b_id.eq.${user!.userId}`);
+    .select("user_a_id, user_b_id, status")
+    .or(`user_a_id.eq.${user!.userId},user_b_id.eq.${user!.userId}`)
+    .in("status", ["pending", "accepted"]);
 
   if (matchError) {
     return NextResponse.json(
