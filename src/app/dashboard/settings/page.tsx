@@ -10,6 +10,7 @@ import {
   LogOut,
   ChevronRight,
   ArrowLeft,
+  KeyRound,
 } from "lucide-react";
 import AboutSection from "@/components/settings/AboutSection";
 import EditPasswordSection from "@/components/settings/EditPasswordSection";
@@ -130,7 +131,7 @@ export default function SettingsPage() {
                   />
                 </button>
 
-                {/* <button
+                <button
                   onClick={() => handleSelectTab("edit-password")}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     activeTab === "edit-password"
@@ -157,12 +158,12 @@ export default function SettingsPage() {
                         : "text-slate-400"
                     }`}
                   />
-                </button> */}
+                </button>
               </div>
             </div>
 
             {/* Application Group */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <p className="px-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Application
               </p>
@@ -196,7 +197,7 @@ export default function SettingsPage() {
                   />
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Others Group */}
             <div className="space-y-2">
